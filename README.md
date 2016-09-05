@@ -25,3 +25,11 @@ page.create({ log: true })
     .end()
 ;
 ```
+
+## Developing haunt.js
+
+To run a src-to-build compiler to make code old-javascript-compatible, use the included npm command
+
+```
+npm run build
+```
