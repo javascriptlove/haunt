@@ -150,8 +150,8 @@ var Haunt = function () {
             }, selector);
         }
     }, {
-        key: 'getHtmlAll',
-        value: function getHtmlAll(selector) {
+        key: 'getHtmlMappingAll',
+        value: function getHtmlMappingAll(selector, props) {
             return this.page.evaluate(function (selector) {
                 var result = [];
                 var elements = document.querySelectorAll(selector);
@@ -161,11 +161,38 @@ var Haunt = function () {
                     }
                 }
                 return result;
-            }, selector);
+            }, selector, props);
+        }
+    }, {
+        key: 'getHtmlAll',
+        value: function getHtmlAll(selector, props) {
+            return this.page.evaluate(function (selector, props) {
+                var result = [];
+                var elements = document.querySelectorAll(selector);
+                if (elements.length) {
+                    for (var i = 0; i < elements.length; i++) {
+                        if (props) {
+                            var result_inner = {};
+                            for (var p in props) {
+                                var elem = elements[i].querySelector(props[p]);
+                                if (elem) {
+                                    result_inner[p] = elem.innerHTML;
+                                } else {
+                                    result_inner[p] = '';
+                                }
+                            }
+                            result.push(result_inner);
+                        } else {
+                            result.push(elements[i].innerHTML);
+                        }
+                    }
+                }
+                return result;
+            }, selector, props);
         }
     }, {
         key: 'getHtmlAttrAll',
-        value: function getHtmlAttrAll(selector, attribute) {
+        value: function getHtmlAttrAll(selector, attribute, props) {
             return this.page.evaluate(function (selector, attribute) {
                 var result = [];
                 var elements = document.querySelectorAll(selector);
@@ -229,16 +256,19 @@ var Haunt = function () {
         }
     }, {
         key: 'dataList',
-        value: function dataList(selector, key) {
+        value: function dataList(key, selector, props) {
             if (typeof selector !== 'string') {
                 this.fatal('First parameter for `dataList` is not a string');
             }
             if (typeof key !== 'string') {
                 this.fatal('Second parameter for `dataList` is not a string');
             }
+            if (typeof props !== 'undefined' && (typeof props === 'undefined' ? 'undefined' : _typeof(props)) !== 'object') {
+                this.fatal('Third parameter for `eachDataList` is not an object');
+            }
             var that = this;
             this._push(function (resolve, reject) {
-                var results = that.getHtmlAll(selector);
+                var results = that.getHtmlAll(selector, props);
                 that.setData(key, results);
                 resolve();
             });
@@ -246,15 +276,15 @@ var Haunt = function () {
         }
     }, {
         key: 'dataAttributeList',
-        value: function dataAttributeList(selector, attribute, key) {
+        value: function dataAttributeList(key, selector, attribute) {
             if (typeof selector !== 'string') {
-                this.fatal('First parameter for `dataList` is not a string');
+                this.fatal('First parameter for `dataAttributeList` is not a string');
             }
             if (typeof attribute !== 'string') {
-                this.fatal('Second parameter for `dataList` is not a string');
+                this.fatal('Second parameter for `dataAttributeList` is not a string');
             }
             if (typeof key !== 'string') {
-                this.fatal('Third parameter for `dataList` is not a string');
+                this.fatal('Third parameter for `dataAttributeList` is not a string');
             }
             var that = this;
             this._push(function (resolve, reject) {
