@@ -64,10 +64,15 @@ class Haunt {
         });
         return this;
     }
-    end() {
+    end(func) {
+        var that = this;
         this._push(function(resolve, reject) {
+            if (typeof func === 'function') {
+                func.call(that);
+            }
             phantom.exit();
         });
+        // no return here
     }
     fatal(message) {
         console.error('FATAL ERROR: ' + message);

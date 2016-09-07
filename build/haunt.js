@@ -86,10 +86,15 @@ var Haunt = function () {
         }
     }, {
         key: 'end',
-        value: function end() {
+        value: function end(func) {
+            var that = this;
             this._push(function (resolve, reject) {
+                if (typeof func === 'function') {
+                    func.call(that);
+                }
                 phantom.exit();
             });
+            // no return here
         }
     }, {
         key: 'fatal',
