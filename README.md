@@ -57,35 +57,35 @@ Accepts an `options` object with the next keys:
 
 `log: true|false` optionally enable the logs for the process, if you want to track page errors or other problems
 
-**click**
+**`click`**
 
 `.click(selector)` perform the click event on the specified selector.
 
-**end**
+**`end`**
 
 `.end([func])` end the phantom process and run an optional callback before that.
 
-**get**
+**`get`**
 
 `.get(url)` navigate to a given URL and continue to next step when the page loading is done.
 
-**html**
+**`html`**
 
 `.html(selector)` returns the innerHTML of the given selector. Synchronous is `.getHtml`.
 
-**title**
+**`title`**
 
 `.title(func)` get the document title and run the callback. Synchronous is `.getTitle`.
 
-**wait**
+**`wait`**
 
 `.wait(ms)` wait for specific time in milliseconds
 
-**getData**
+**`getData`**
 
 `.getData([key])` *sync* Gets the value of the `key` or returns full data object.
 
-**setData**
+**`setData`**
 
 `.setData(key, value)` *sync* Sets the `value` to the `key` to be used later. 
 
