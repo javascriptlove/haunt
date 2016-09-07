@@ -53,19 +53,19 @@ page.create();
 
 `.create()` is the only function being exported, and it returns a promise-like *Haunt object* which can be chained with a set of calls to run a scenario.
 
-*click*
+**click**
 
 `.click(selector)` will perform the click event on the specified selector.
 
-*end*
+**end**
 
 `.end([func])` will end the phantom process and run an optional callback before that.
 
-*get*
+**get**
 
 `.get(url)` will navigate to a given URL and continue to next step when the page loading is done.
 
-*title*
+**title**
 
 `.title(func)` will get the document title and run the callback. Synchronous is `.getTitle`. 
 
