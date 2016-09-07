@@ -1,6 +1,15 @@
 {
     "name": "haunt",
     "version": "1.0.0",
+    "author": {
+        "name": "Alexander Kuzmenok",
+        "url": "https://www.linkedin.com/in/alexanderkuzmenok"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/javascriptlove/haunt"
+    },
+    "license": "MIT",
     "scripts": {
         "build": "babel --watch src -d build"
     },

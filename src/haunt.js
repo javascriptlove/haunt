@@ -107,6 +107,11 @@ class Haunt {
             }
         });
     }
+    getURL() {
+        return this.page.evaluate(function() {
+            return window.location.toString();
+        });
+    }
     getHtml(selector) {
         return this.page.evaluate(function(selector) {
             var element = document.querySelector(selector);
@@ -127,42 +132,93 @@ class Haunt {
             return result;
         }, selector, props);
     }
-    getHtmlAll(selector, props) {
-        return this.page.evaluate(function(selector, props) {
+    getHtmlAll(selector, attribute, props) {
+        this.page.evaluate(this.phantomDataFilter);
+        if (typeof attribute === 'object' && typeof props === 'undefined') {
+            props = attribute;
+            attribute = ''; 
+        }
+        return this.page.evaluate(function(selector, attribute, props) {
             var result = [];
-            var elements = document.querySelectorAll(selector);
+            var selector = selector.split('->');
+            var elements = document.querySelectorAll(selector[0]);
             if (elements.length) {
                 for (var i = 0; i < elements.length; i++) {
                     if (props) {
                         var result_inner = {};
                         for (var p in props) {
-                            var elem = elements[i].querySelector(props[p]);
+                            // check if it's an array
+                            // first item in array of props is selector
+                            var prop = props[p].split('->');
+                            var elem = elements[i].querySelector(prop[0]);
                             if (elem) {
                                 result_inner[p] = elem.innerHTML;
                             } else {
                                 result_inner[p] = '';
                             }
+                            // process filters if filters were provided
+                            if (prop.length > 1) {
+                                result_inner[p] = phantomDataFilter(result_inner[p], prop.slice(1)); 
+                            }
                         }
                         result.push(result_inner);
                     } else {
-                        result.push(elements[i].innerHTML);
+                        // process filters if filters were provided
+                        var result_inner = elements[i].innerHTML;
+                        if (selector.length > 1) {
+                            result_inner = phantomDataFilter(result_inner, selector.slice(1));
+                        }
+                        result.push(result_inner);
                     }
                 }
             }
             return result;
-        }, selector, props);
+        }, selector, attribute, props);
     }
-    getHtmlAttrAll(selector, attribute, props) {
-        return this.page.evaluate(function(selector, attribute) {
-            var result = [];
-            var elements = document.querySelectorAll(selector);
-            if (elements.length) {
-                for (var i = 0; i < elements.length; i++) {
-                    result.push(elements[i].getAttribute(attribute));
+    phantomDataFilter() {
+        window.phantomDataFilter = function(what, filters) {
+            what = String(what); // is it ok to do like this?
+            for (var a = 0; a < filters.length; a++) {
+                var filter = String(filters[a]).trim();
+                if (filter == 'removeWhitespace') {
+                    what = what.replace(/\s/g, '');
+                } if (filter == 'number') {
+                    what = parseInt(what, 10);
+                } else if (filter == 'decimal' || filter == 'float') {
+                    what = parseFloat(what, 10);
+                } else if (filter == 'trim') {
+                    what = what.trim();
                 }
             }
-            return result;
-        }, selector, attribute);
+            return what;
+        }
+    }
+    doClick(selector) {
+        return this.page.evaluate(function(selector) {
+            // http://stackoverflow.com/a/17789929/266561
+            if (!HTMLElement.prototype.click) {
+                HTMLElement.prototype.click = function() {
+                    var ev = document.createEvent('MouseEvent');
+                    ev.initMouseEvent(
+                        'click',
+                        /*bubble*/true, /*cancelable*/true,
+                        window, null,
+                        0, 0, 0, 0, /*coordinates*/
+                        false, false, false, false, /*modifier keys*/
+                        0/*button=left*/, null
+                    );
+                    this.dispatchEvent(ev);
+                };
+            }
+            // now find the element
+            var elem = document.querySelector(selector);
+            if (elem) {
+                elem.click();
+                return true;
+            } else {
+                return false;
+            }
+        }, selector);
     }
 
     /* 
@@ -178,6 +234,17 @@ class Haunt {
         return this;
     }
     post(url, data) {
+        return this;
+    }
+    url(func) {
+        if (typeof func !== 'function') {
+            this.fatal('Parameter for `url` is not a function');
+        }
+        var that = this;
+        that._push(function(resolve, reject) {
+            func.call(that, that.getURL());
+            resolve();
+        });
         return this;
     }
     title(func) {
@@ -205,7 +272,7 @@ class Haunt {
         });
         return this;
     }
-    dataList(key, selector, props) {
+    dataList(key, selector, attribute, props) {
         if (typeof selector !== 'string') {
             this.fatal('First parameter for `dataList` is not a string');
         }
@@ -213,31 +280,30 @@ class Haunt {
             this.fatal('Second parameter for `dataList` is not a string');
         }
         if (typeof props !== 'undefined' && typeof props !== 'object') {
-            this.fatal('Third parameter for `eachDataList` is not an object');
+            this.fatal('Third parameter for `dataList` is not an object');
         }
         var that = this;
         this._push(function(resolve, reject) {
-            var results = that.getHtmlAll(selector, props);
+            var results = that.getHtmlAll(selector, attribute, props);
             that.setData(key, results);
             resolve();
         });
         return this;
     }
-    dataAttributeList(key, selector, attribute) {
-        if (typeof selector !== 'string') {
-            this.fatal('First parameter for `dataAttributeList` is not a string');
-        }
-        if (typeof attribute !== 'string') {
-            this.fatal('Second parameter for `dataAttributeList` is not a string');
-        }
-        if (typeof key !== 'string') {
-            this.fatal('Third parameter for `dataAttributeList` is not a string');
-        }
+    click(selector) {
         var that = this;
         this._push(function(resolve, reject) {
-            var results = that.getHtmlAttrAll(selector, attribute);
-            that.setData(key, results);
+            that.doClick(selector);
             resolve();
+        });
+        return this;
+    }
+    wait(ms) {
+        var that = this;
+        this._push(function(resolve, reject) {
+            setTimeout(function() {
+                resolve();
+            }, ms);
         });
         return this;
     }
