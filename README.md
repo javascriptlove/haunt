@@ -51,29 +51,47 @@ var page = require('./haunt.js');
 page.create();
 ```
 
-`.create()` is the only function being exported, and it returns a promise-like *Haunt object* which can be chained with a set of calls to run a scenario.
+`.create([options])` is the only function being exported, and it returns a promise-like *Haunt object* which can be chained with a set of calls to run a scenario.
+
+Accepts an `options` object with the next keys:
+
+`log: true|false` optionally enable the logs for the process, if you want to track page errors or other problems
 
 **click**
 
-`.click(selector)` will perform the click event on the specified selector.
+`.click(selector)` perform the click event on the specified selector.
 
 **end**
 
-`.end([func])` will end the phantom process and run an optional callback before that.
+`.end([func])` end the phantom process and run an optional callback before that.
 
 **get**
 
-`.get(url)` will navigate to a given URL and continue to next step when the page loading is done.
+`.get(url)` navigate to a given URL and continue to next step when the page loading is done.
+
+**html**
+
+`.html(selector)` returns the innerHTML of the given selector. Synchronous is `.getHtml`.
 
 **title**
 
-`.title(func)` will get the document title and run the callback. Synchronous is `.getTitle`. 
+`.title(func)` get the document title and run the callback. Synchronous is `.getTitle`.
 
+**wait**
 
+`.wait(ms)` wait for specific time in milliseconds
+
+**getData**
+
+`.getData([key])` *sync* Gets the value of the `key` or returns full data object.
+
+**setData**
+
+`.setData(key, value)` *sync* Sets the `value` to the `key` to be used later. 
 
 ## Developing haunt.js
 
-To run a src-to-build compiler to make code old-javascript-compatible, use the included npm command
+If you want to change the source and run a src-to-build compiler to make code old-javascript-compatible, use the included npm command
 
 ```
 npm i

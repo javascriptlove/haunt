@@ -163,20 +163,6 @@ var Haunt = function () {
             }, selector);
         }
     }, {
-        key: 'getHtmlMappingAll',
-        value: function getHtmlMappingAll(selector, props) {
-            return this.page.evaluate(function (selector) {
-                var result = [];
-                var elements = document.querySelectorAll(selector);
-                if (elements.length) {
-                    for (var i = 0; i < elements.length; i++) {
-                        result.push(elements[i].innerHTML);
-                    }
-                }
-                return result;
-            }, selector, props);
-        }
-    }, {
         key: 'getHtmlAll',
         value: function getHtmlAll(selector, attribute, props) {
             this.page.evaluate(this.phantomDataFilter);
@@ -337,9 +323,6 @@ var Haunt = function () {
             }
             if (typeof key !== 'string') {
                 this.fatal('Second parameter for `dataList` is not a string');
-            }
-            if (typeof props !== 'undefined' && (typeof props === 'undefined' ? 'undefined' : _typeof(props)) !== 'object') {
-                this.fatal('Third parameter for `dataList` is not an object');
             }
             var that = this;
             this._push(function (resolve, reject) {
