@@ -6,7 +6,10 @@ Haunt.js is a scraping tool for PhantomJS. It simply takes care of everything yo
 ```javascript
 var page = require('./haunt.js');
 
-page.create({ log: true })
+page.create({ 
+        log: true,
+        userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'
+    })
     .get('http://example.com')
     .title(function(title) {
         console.log(title);

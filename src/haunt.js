@@ -20,6 +20,10 @@ class Haunt {
             if (options.waitForTimeout) {
                 this.options.waitForTimeout = options.waitForTimeout;
             }
+
+            if (options.userAgent) {
+                this.options.userAgent = options.userAgent;
+            }
         }
         this.dataStorage = {};
         this.actions = [];
@@ -28,6 +32,10 @@ class Haunt {
 
         this.page.onConsoleMessage = this.onConsoleMessage;
         this.page.onError = this.onError;
+
+        if (this.options.userAgent) {
+            this.page.settings.userAgent = this.options.userAgent; 
+        }
 
         // aliases for usability and memory relaxing
         this.open = this.go = this.get;
