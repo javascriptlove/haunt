@@ -8,11 +8,17 @@ var webpage = require('webpage');
 class Haunt {
     constructor(options) {
         this.options = {};
+        this.options.waitForTimeout = 30000;
+        this.options.waitForPoll = 100;
         if (typeof options === 'object') {
             this.options.log = (options.log === true);
 
             if (!this.options.log) {
                 this.log = function() { }; // reset to nothing
+            }
+
+            if (options.waitForTimeout) {
+                this.options.waitForTimeout = options.waitForTimeout;
             }
         }
         this.dataStorage = {};
@@ -24,7 +30,7 @@ class Haunt {
         this.page.onError = this.onError;
 
         // aliases for usability and memory relaxing
-        this.open = this.goto = this.go = this.get;
+        this.open = this.go = this.get;
         return this;
     }
     /* 
@@ -74,6 +80,14 @@ class Haunt {
         });
         // no return here
     }
+    return() {
+        var that = this;
+        this._push(function(resolve, reject) {
+            console.log(JSON.stringify(that.data));
+            phantom.exit();
+        });
+        // no return here
+    }
     fatal(message) {
         console.error('FATAL ERROR: ' + message);
         phantom.exit();
@@ -96,10 +110,13 @@ class Haunt {
         return this.getData();
     }
     onConsoleMessage(msg, line, source) {
-        console.log(msg + ' line #' + line);
+        this.log(msg);
+        this.log('line #' + line);
+        this.log('source: ' + source);
     }
     onError(msg, trace) {
-        console.error(msg);
+        this.log(msg);
+        this.log(trace)
     }
     
     /*
@@ -127,25 +144,35 @@ class Haunt {
     }
     getHtmlAll(selector, attribute, props) {
         this.page.evaluate(this.phantomDataFilter);
-        if (typeof attribute === 'object' && typeof props === 'undefined') {
-            props = attribute;
-            attribute = ''; 
-        }
         return this.page.evaluate(function(selector, attribute, props) {
             var result = [];
             var selector = selector.split('->');
             var elements = document.querySelectorAll(selector[0]);
             if (elements.length) {
                 for (var i = 0; i < elements.length; i++) {
+                    // if has children specified
                     if (props) {
                         var result_inner = {};
                         for (var p in props) {
                             // check if it's an array
                             // first item in array of props is selector
                             var prop = props[p].split('->');
-                            var elem = elements[i].querySelector(prop[0]);
+                            var selector = prop[0];
+                            var childAttribute = '';
+                            if (selector.indexOf('@') !== -1) { // attribute selector
+                                selector = selector.split('@');
+                                childAttribute = selector[1];
+                                selector = selector[0];
+                                console.log(selector);
+                            }
+                            // query element
+                            var elem = elements[i].querySelector(selector);
                             if (elem) {
-                                result_inner[p] = elem.innerHTML;
+                                if (childAttribute) {
+                                    result_inner[p] = elem.getAttribute(childAttribute);    
+                                } else {
+                                    result_inner[p] = elem.innerHTML;
+                                }
                             } else {
                                 result_inner[p] = '';
                             }
@@ -157,7 +184,11 @@ class Haunt {
                         result.push(result_inner);
                     } else {
                         // process filters if filters were provided
-                        var result_inner = elements[i].innerHTML;
+                        if (attribute) {
+                            var result_inner = elements[i].getAttribute(attribute);
+                        } else {
+                            var result_inner = elements[i].innerHTML;
+                        }
                         if (selector.length > 1) {
                             result_inner = phantomDataFilter(result_inner, selector.slice(1));
                         }
@@ -272,6 +303,10 @@ class Haunt {
         if (typeof key !== 'string') {
             this.fatal('Second parameter for `dataList` is not a string');
         }
+        if (typeof attribute === 'object' && typeof props === 'undefined') {
+            props = attribute;
+            attribute = ''; 
+        }
         var that = this;
         this._push(function(resolve, reject) {
             var results = that.getHtmlAll(selector, attribute, props);
@@ -294,6 +329,26 @@ class Haunt {
             setTimeout(function() {
                 resolve();
             }, ms);
+        });
+        return this;
+    }
+    waitFor(selector, ms) {
+        var that = this;
+        that._push(function(resolve, reject) {
+            var t = setTimeout(function() {
+                clearInterval(i);
+                reject();
+            }, ms || that.options.waitForTimeout);
+            var i = setInterval(function() {
+                var result = that.page.evaluate(function(selector) {
+                    return !!document.querySelector(selector);
+                }, selector);
+                if (result) {
+                    clearInterval(i);
+                    clearTimeout(t);
+                    resolve();
+                }
+            }, that.options.waitForPoll);
         });
         return this;
     }

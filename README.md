@@ -65,13 +65,17 @@ Accepts an `options` object with the next keys:
 
 `.end([func])` end the phantom process and run an optional callback before that.
 
-**`get`**
+**`get, go, open`**
 
 `.get(url)` navigate to a given URL and continue to next step when the page loading is done.
 
 **`html`**
 
 `.html(selector)` returns the innerHTML of the given selector. Synchronous is `.getHtml`.
+
+**`return`**
+
+`.return()` return `this.data` to the console and end the phantom process.
 
 **`title`**
 
@@ -80,6 +84,10 @@ Accepts an `options` object with the next keys:
 **`wait`**
 
 `.wait(ms)` wait for specific time in milliseconds
+
+**`waitFor`**
+
+`.waitFor(selector, [ms])` wait for specific selector to appear on page with an optional timeout specified, defaulting to 30000ms.
 
 **`getData`**
 
