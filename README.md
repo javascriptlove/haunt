@@ -17,13 +17,15 @@ page.create({ log: true })
     .dataList('prices', '.prices b -> number')
     .dataList('items', '.items > li', {
         'title': 'h1',
-        'description': '.description p',
+        'image': 'img@src',
+        'url': 'a@href',
+        'description': '.description p -> trim',
         'price': '.price span -> removeWhitespace -> number',
         'length': '.length -> decimal'
     })
     .wait(1000)
     .click('a[href="/login"]')
-    .wait(5000)
+    .waitFor('.username')
     .url(function(url) {
         console.log(url);
     })
