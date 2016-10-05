@@ -66,6 +66,10 @@ Accepts an `options` object with the next keys:
 
 `.click(selector)` perform the click event on the specified selector.
 
+**`dataList`**
+
+`.dataList(dataKey, selector, [children])` the core of operation, it allows to get a data from document and save it into a storage under the `dataKey`. If the `children` parameter is present, the result will be an array with objects with specified keys-values from `children`.  
+
 **`end`**
 
 `.end([func])` end the phantom process and run an optional callback before that.
