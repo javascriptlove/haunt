@@ -47,6 +47,12 @@ var Haunt = function () {
             this.page.settings.userAgent = this.options.userAgent;
         }
 
+        if (this.options.loadImages) {
+            this.page.settings.loadImages = this.options.loadImages;
+        } else {
+            this.page.settings.loadImages = false;
+        }
+
         // aliases for usability and memory relaxing
         this.open = this.go = this.get;
         return this;
@@ -213,7 +219,6 @@ var Haunt = function () {
                                     selector = selector.split('@');
                                     childAttribute = selector[1];
                                     selector = selector[0];
-                                    console.log(selector);
                                 }
                                 // query element
                                 var elem = elements[i].querySelector(selector);
