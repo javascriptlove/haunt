@@ -1,6 +1,6 @@
 'use strict';
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -21,18 +21,19 @@ var Haunt = function () {
         this.options.waitForTimeout = 30000;
         this.options.waitForPoll = 100;
         if ((typeof options === 'undefined' ? 'undefined' : _typeof(options)) === 'object') {
-            this.options.log = options.log === true;
+            this.options.log = !!options.log;
 
             if (!this.options.log) {
                 this.log = function () {}; // reset to nothing
             }
-
             if (options.waitForTimeout) {
                 this.options.waitForTimeout = options.waitForTimeout;
             }
-
             if (options.userAgent) {
                 this.options.userAgent = options.userAgent;
+            }
+            if (options.blockIframes) {
+                this.options.blockIframes = !!options.blockIframes;
             }
         }
         this.dataStorage = {};
@@ -45,6 +46,16 @@ var Haunt = function () {
 
         if (this.options.userAgent) {
             this.page.settings.userAgent = this.options.userAgent;
+        }
+        if (this.options.blockIframes) {
+            this.page.onLoadStarted = function () {
+                var url = page.evaluate(function () {
+                    return window.location.href;
+                });
+                if (this.requestedUrl != url) {
+                    this.page.navigationLocked = true;
+                }
+            }.bind(this);
         }
 
         this.page.settings.loadImages = !!this.options.loadImages;
@@ -126,6 +137,11 @@ var Haunt = function () {
         key: 'fatal',
         value: function fatal(message) {
             console.error('FATAL ERROR: ' + message);
+            try {
+                throw new Error('Call stack');
+            } catch (e) {
+                console.error(e.stack);
+            }
             phantom.exit(1);
         }
         /**
@@ -387,6 +403,7 @@ var Haunt = function () {
         key: 'get',
         value: function get(url) {
             this._push(function (resolve, reject) {
+                this.requestedUrl = url;
                 this.page.open(url, function (status) {
                     resolve(status);
                 });
@@ -486,8 +503,8 @@ var Haunt = function () {
     return Haunt;
 }();
 
-var create = function create() {
-    return new Haunt();
+var create = function create(options) {
+    return new Haunt(options);
 };
 
 exports.create = create;

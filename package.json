@@ -1,21 +1,21 @@
 {
-    "name": "haunt",
-    "version": "1.1.0",
-    "author": {
-        "name": "Alexander Kuzmenok",
-        "url": "https://www.linkedin.com/in/alexanderkuzmenok"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/javascriptlove/haunt"
-    },
-    "license": "MIT",
-    "scripts": {
-        "watch": "babel --watch src -d build",
-        "build": "babel src -d build"
-    },
-    "devDependencies": {
-        "babel-cli": "^6.14.0",
-        "babel-preset-es2015": "^6.14.0"
-    }
+  "name": "haunt",
+  "version": "1.1.0",
+  "author": {
+    "name": "Alexander Kuzmenok",
+    "url": "https://www.linkedin.com/in/alexanderkuzmenok"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/javascriptlove/haunt"
+  },
+  "license": "MIT",
+  "scripts": {
+    "watch": "babel --watch src -d build",
+    "build": "babel src -d build"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.0",
+    "babel-preset-es2015": "^6.14.0"
+  }
 }

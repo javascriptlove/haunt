@@ -11,18 +11,19 @@ class Haunt {
         this.options.waitForTimeout = 30000;
         this.options.waitForPoll = 100;
         if (typeof options === 'object') {
-            this.options.log = (options.log === true);
+            this.options.log = !!options.log;
 
             if (!this.options.log) {
                 this.log = function() { }; // reset to nothing
             }
-
             if (options.waitForTimeout) {
                 this.options.waitForTimeout = options.waitForTimeout;
             }
-
             if (options.userAgent) {
                 this.options.userAgent = options.userAgent;
+            }
+            if (options.blockIframes) {
+                this.options.blockIframes = !!options.blockIframes;
             }
         }
         this.dataStorage = {};
@@ -35,6 +36,16 @@ class Haunt {
 
         if (this.options.userAgent) {
             this.page.settings.userAgent = this.options.userAgent; 
+        }
+        if (this.options.blockIframes) {
+            this.page.onLoadStarted = function() {
+                var url = page.evaluate(function() {
+                    return window.location.href;
+                });
+                if (this.requestedUrl != url) {
+                    this.page.navigationLocked = true;
+                }
+            }.bind(this); 
         }
 
         this.page.settings.loadImages = !!this.options.loadImages;
@@ -99,6 +110,11 @@ class Haunt {
     }
     fatal(message) {
         console.error('FATAL ERROR: ' + message);
+        try {
+            throw new Error('Call stack');
+        } catch(e) {
+            console.error(e.stack);
+        }
         phantom.exit(1);
     }
     /**
@@ -326,6 +342,7 @@ class Haunt {
     }
     get(url) {
         this._push(function(resolve, reject) {
+            this.requestedUrl = url;
             this.page.open(url, function(status) {
                 resolve(status);
             });
@@ -402,8 +419,8 @@ class Haunt {
     }
 }
 
-var create = function() {
-    return new Haunt();
+var create = function(options) {
+    return new Haunt(options);
 }
 
 exports.create = create;
