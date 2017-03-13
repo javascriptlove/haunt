@@ -47,14 +47,10 @@ var Haunt = function () {
             this.page.settings.userAgent = this.options.userAgent;
         }
 
-        if (this.options.loadImages) {
-            this.page.settings.loadImages = this.options.loadImages;
-        } else {
-            this.page.settings.loadImages = false;
-        }
+        this.page.settings.loadImages = !!this.options.loadImages;
 
         // aliases for usability and memory relaxing
-        this.open = this.go = this.get;
+        this.open = this.start = this.go = this.get;
         return this;
     }
     /* 
@@ -73,17 +69,16 @@ var Haunt = function () {
     }, {
         key: '_run',
         value: function _run() {
-            var that = this;
             this.processing = true;
             this.actions[0](function () {
-                that.actions.splice(0, 1);
-                that.processing = false;
-                if (that.actions.length) {
-                    that._run();
+                this.actions.splice(0, 1);
+                this.processing = false;
+                if (this.actions.length) {
+                    this._run();
                 }
-            }, function () {
-                that.fatal('Error while performing step');
-            });
+            }.bind(this), function () {
+                this.fatal('Error while performing step');
+            }.bind(this));
         }
     }, {
         key: 'log',
@@ -97,41 +92,63 @@ var Haunt = function () {
             if (typeof func !== 'function') {
                 this.fatal('Parameter for `then` is not a function');
             }
-            var that = this;
             this._push(function (resolve, reject) {
-                func.call(that);
+                func.call(this);
                 resolve();
-            });
+            }.bind(this));
             return this;
         }
+        /**
+         * Run an optional callback and finish the process
+         *
+         * @param {function} [callback] - callback to run before exiting the process
+         */
+
     }, {
         key: 'end',
         value: function end(func) {
-            var that = this;
             this._push(function (resolve, reject) {
                 if (typeof func === 'function') {
-                    func.call(that);
+                    func.call(this);
                 }
                 phantom.exit();
-            });
+            }.bind(this));
             // no return here
         }
     }, {
-        key: 'return',
-        value: function _return() {
-            var that = this;
-            this._push(function (resolve, reject) {
-                console.log(JSON.stringify(that.data));
-                phantom.exit();
-            });
-            // no return here
+        key: 'check',
+        value: function check(variable, type) {
+            if ((typeof variable === 'undefined' ? 'undefined' : _typeof(variable)) !== type) {
+                this.fatal('Parameter ' + variable + ' is not of type `' + type + '`');
+            }
         }
     }, {
         key: 'fatal',
         value: function fatal(message) {
             console.error('FATAL ERROR: ' + message);
-            phantom.exit();
+            phantom.exit(1);
         }
+        /**
+         * Output this.data to console and end the process, used to return data to external scripts
+         *
+         * @param {function} [callback] - callback to run before exiting the process
+         */
+
+    }, {
+        key: 'return',
+        value: function _return(func) {
+            this.end(function () {
+                if (typeof func === 'function') {
+                    func.call(this);
+                }
+                console.log(JSON.stringify(this.data));
+            });
+            // no return here
+        }
+        /**
+         * Setter/getter for data storage
+         */
+
     }, {
         key: 'setData',
         value: function setData(key, value) {
@@ -147,9 +164,9 @@ var Haunt = function () {
                 return this.dataStorage;
             }
         }
-        /* 
-        Alias for getData(); but can be used without brackets
-        */
+        /**
+         * Alias for getData(); but can be used without brackets
+         */
 
     }, {
         key: 'onConsoleMessage',
@@ -165,25 +182,44 @@ var Haunt = function () {
             this.log(trace);
         }
 
-        /*
-        Synchronous APIs
-        */
+        /**
+         * Synchronous APIs
+         */
 
     }, {
-        key: 'getTitle',
-        value: function getTitle() {
-            return this.page.evaluate(function () {
-                if (document) {
-                    return document.title;
+        key: 'doClick',
+        value: function doClick(selector) {
+            return this.page.evaluate(function (selector) {
+                // http://stackoverflow.com/a/17789929/266561
+                if (!HTMLElement.prototype.click) {
+                    HTMLElement.prototype.click = function () {
+                        var ev = document.createEvent('MouseEvent');
+                        ev.initMouseEvent('click',
+                        /*bubble*/true, /*cancelable*/true, window, null, 0, 0, 0, 0, /*coordinates*/
+                        false, false, false, false, /*modifier keys*/
+                        0 /*button=left*/, null);
+                        this.dispatchEvent(ev);
+                    };
                 }
-            });
+                // now find the element
+                var elem = document.querySelector(selector);
+                if (elem) {
+                    elem.click();
+                    return true;
+                } else {
+                    return false;
+                }
+            }, selector);
         }
     }, {
-        key: 'getURL',
-        value: function getURL() {
-            return this.page.evaluate(function () {
-                return window.location.toString();
-            });
+        key: 'getAttr',
+        value: function getAttr(selector, attr) {
+            return this.page.evaluate(function (selector, attr) {
+                var element = document.querySelector(selector);
+                if (element) {
+                    return element.getAttribute(attr);
+                }
+            }, selector, attr);
         }
     }, {
         key: 'getHtml',
@@ -255,6 +291,36 @@ var Haunt = function () {
             }, selector, attribute, props);
         }
     }, {
+        key: 'getStyle',
+        value: function getStyle(selector, style) {
+            return this.page.evaluate(function (selector, style) {
+                var element = document.querySelector(selector);
+                if (element) {
+                    return element.style[style];
+                }
+            }, selector, style);
+        }
+    }, {
+        key: 'getTitle',
+        value: function getTitle() {
+            return this.page.evaluate(function () {
+                if (document) {
+                    return document.title;
+                }
+            });
+        }
+    }, {
+        key: 'getURL',
+        value: function getURL() {
+            return this.page.evaluate(function () {
+                return window.location.toString();
+            });
+        }
+        /**
+         * Data processing filters ran in Phantom context
+         */
+
+    }, {
         key: 'phantomDataFilter',
         value: function phantomDataFilter() {
             window.phantomDataFilter = function (what, filters) {
@@ -274,147 +340,131 @@ var Haunt = function () {
                 return what;
             };
         }
+
+        /** 
+         * Asynchronous API starts here
+         * These are chainable functions that make up the Haunt scenario
+         */
+
     }, {
-        key: 'doClick',
-        value: function doClick(selector) {
-            return this.page.evaluate(function (selector) {
-                // http://stackoverflow.com/a/17789929/266561
-                if (!HTMLElement.prototype.click) {
-                    HTMLElement.prototype.click = function () {
-                        var ev = document.createEvent('MouseEvent');
-                        ev.initMouseEvent('click',
-                        /*bubble*/true, /*cancelable*/true, window, null, 0, 0, 0, 0, /*coordinates*/
-                        false, false, false, false, /*modifier keys*/
-                        0 /*button=left*/, null);
-                        this.dispatchEvent(ev);
-                    };
-                }
-                // now find the element
-                var elem = document.querySelector(selector);
-                if (elem) {
-                    elem.click();
-                    return true;
-                } else {
-                    return false;
-                }
-            }, selector);
+        key: 'attr',
+        value: function attr(selector, _attr, func) {
+            this.check(selector, 'string');
+            this.check(_attr, 'string');
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.getAttr(selector, _attr));
+                resolve();
+            }.bind(this));
+            return this;
         }
-
-        /* 
-        API starts here
-        */
-
+    }, {
+        key: 'click',
+        value: function click(selector) {
+            this._push(function (resolve, reject) {
+                this.doClick(selector);
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
+        key: 'dataList',
+        value: function dataList(key, selector, attribute, props) {
+            this.check(selector, 'string');
+            this.check(key, 'string');
+            if ((typeof attribute === 'undefined' ? 'undefined' : _typeof(attribute)) === 'object' && typeof props === 'undefined') {
+                props = attribute;
+                attribute = '';
+            }
+            this._push(function (resolve, reject) {
+                var results = this.getHtmlAll(selector, attribute, props);
+                this.setData(key, results);
+                resolve();
+            }.bind(this));
+            return this;
+        }
     }, {
         key: 'get',
         value: function get(url) {
-            var that = this;
             this._push(function (resolve, reject) {
-                that.page.open(url, function (status) {
+                this.page.open(url, function (status) {
                     resolve(status);
                 });
-            });
+            }.bind(this));
             return this;
         }
+    }, {
+        key: 'html',
+        value: function html(selector, func) {
+            this.check(selector, 'string');
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.getHtml(selector));
+                resolve();
+            }.bind(this));
+            return this;
+        }
+        /**
+         * TODO: POST data to url
+         */
+
     }, {
         key: 'post',
         value: function post(url, data) {
             return this;
         }
     }, {
-        key: 'url',
-        value: function url(func) {
-            if (typeof func !== 'function') {
-                this.fatal('Parameter for `url` is not a function');
-            }
-            var that = this;
-            that._push(function (resolve, reject) {
-                func.call(that, that.getURL());
+        key: 'style',
+        value: function style(selector, _style, func) {
+            this.check(selector, 'string');
+            this.check(_style, 'string');
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.getStyle(selector, _style));
                 resolve();
-            });
+            }.bind(this));
             return this;
         }
     }, {
         key: 'title',
         value: function title(func) {
-            if (typeof func !== 'function') {
-                this.fatal('Parameter for `title` is not a function');
-            }
-            var that = this;
-            that._push(function (resolve, reject) {
-                func.call(that, that.getTitle());
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.getTitle());
                 resolve();
-            });
+            }.bind(this));
             return this;
         }
     }, {
-        key: 'html',
-        value: function html(selector, func) {
-            if (typeof selector !== 'string') {
-                this.fatal('First parameter for `html` is not a string');
-            }
-            if (typeof func !== 'function') {
-                this.fatal('Second parameter for `html` is not a function');
-            }
-            var that = this;
+        key: 'url',
+        value: function url(func) {
+            this.check(func, 'function');
             this._push(function (resolve, reject) {
-                func.call(that, that.getHtml(selector));
+                func.call(this, this.getURL());
                 resolve();
-            });
-            return this;
-        }
-    }, {
-        key: 'dataList',
-        value: function dataList(key, selector, attribute, props) {
-            if (typeof selector !== 'string') {
-                this.fatal('First parameter for `dataList` is not a string');
-            }
-            if (typeof key !== 'string') {
-                this.fatal('Second parameter for `dataList` is not a string');
-            }
-            if ((typeof attribute === 'undefined' ? 'undefined' : _typeof(attribute)) === 'object' && typeof props === 'undefined') {
-                props = attribute;
-                attribute = '';
-            }
-            var that = this;
-            this._push(function (resolve, reject) {
-                var results = that.getHtmlAll(selector, attribute, props);
-                that.setData(key, results);
-                resolve();
-            });
-            return this;
-        }
-    }, {
-        key: 'click',
-        value: function click(selector) {
-            var that = this;
-            this._push(function (resolve, reject) {
-                that.doClick(selector);
-                resolve();
-            });
+            }.bind(this));
             return this;
         }
     }, {
         key: 'wait',
         value: function wait(ms) {
-            var that = this;
             this._push(function (resolve, reject) {
                 setTimeout(function () {
                     resolve();
                 }, ms);
-            });
+            }.bind(this));
             return this;
         }
     }, {
         key: 'waitFor',
         value: function waitFor(selector, ms) {
-            var that = this;
-            that._push(function (resolve, reject) {
+            this._push(function (resolve, reject) {
                 var t = setTimeout(function () {
                     clearInterval(i);
                     reject();
-                }, ms || that.options.waitForTimeout);
+                }, ms || this.options.waitForTimeout);
                 var i = setInterval(function () {
-                    var result = that.page.evaluate(function (selector) {
+                    var result = this.page.evaluate(function (selector) {
                         return !!document.querySelector(selector);
                     }, selector);
                     if (result) {
@@ -422,8 +472,8 @@ var Haunt = function () {
                         clearTimeout(t);
                         resolve();
                     }
-                }, that.options.waitForPoll);
-            });
+                }.bind(this), this.options.waitForPoll);
+            }.bind(this));
             return this;
         }
     }, {

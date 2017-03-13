@@ -4,9 +4,9 @@ Haunt.js is a scraping tool for PhantomJS. It simply takes care of everything yo
 
 
 ```javascript
-var page = require('./haunt.js');
+var haunt = require('./haunt.js');
 
-page.create({ 
+haunt.create({ 
         log: true,
         userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'
     })
@@ -16,6 +16,12 @@ page.create({
     })
     .html('.mainContainer h1', function(html) {
         console.log(html);
+    })
+    .attr('h1', 'class', function(attr) {
+        console.log(attr);
+    })
+    .style('body', 'backgroundColor', function(style) {
+        console.log(style);
     })
     .dataList('prices', '.prices b -> number')
     .dataList('items', '.items > li', {
@@ -52,8 +58,10 @@ Haunt includes several promise-like asynchronous calls and of course some synchr
 *The Start*
 
 ```javascript
-var page = require('./haunt.js');
-page.create();
+var haunt = require('./haunt.js');
+haunt.create().open('https://github.com').title(function(title) {
+    console.log(title)
+});
 ```
 
 `.create([options])` is the only function being exported, and it returns a promise-like *Haunt object* which can be chained with a set of calls to run a scenario.
@@ -61,6 +69,10 @@ page.create();
 Accepts an `options` object with the next keys:
 
 `log: true|false` optionally enable the logs for the process, if you want to track page errors or other problems
+
+**`attr`**
+
+`.attr(selector, attribute)` find the specified selector and get its attribute value.
 
 **`click`**
 
@@ -85,6 +97,10 @@ Accepts an `options` object with the next keys:
 **`return`**
 
 `.return()` return `this.data` to the console and end the phantom process.
+
+**`style`**
+
+`.style(selector, styleName)` find the specified selector and get its style value. Useful when inline styles specified.
 
 **`title`**
 
@@ -113,4 +129,11 @@ If you want to change the source and run a src-to-build compiler to make code ol
 ```
 npm i
 npm run build
+```
+
+The build will be in the `build/` folder, so just use it in your scripts like this:
+
+```javascript
+var haunt = require('./build/haunt.js');
+haunt.create(); // etc. etc.
 ```

@@ -1,6 +1,6 @@
 {
     "name": "haunt",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "author": {
         "name": "Alexander Kuzmenok",
         "url": "https://www.linkedin.com/in/alexanderkuzmenok"
@@ -11,7 +11,8 @@
     },
     "license": "MIT",
     "scripts": {
-        "build": "babel --watch src -d build"
+        "watch": "babel --watch src -d build",
+        "build": "babel src -d build"
     },
     "devDependencies": {
         "babel-cli": "^6.14.0",

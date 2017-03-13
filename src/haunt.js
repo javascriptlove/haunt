@@ -37,14 +37,10 @@ class Haunt {
             this.page.settings.userAgent = this.options.userAgent; 
         }
 
-        if (this.options.loadImages) {
-            this.page.settings.loadImages = this.options.loadImages;
-        } else {
-            this.page.settings.loadImages = false;
-        }
+        this.page.settings.loadImages = !!this.options.loadImages;
         
         // aliases for usability and memory relaxing
-        this.open = this.go = this.get;
+        this.open = this.start = this.go = this.get;
         return this;
     }
     /* 
@@ -57,17 +53,16 @@ class Haunt {
         }
     }
     _run() {
-        var that = this;
         this.processing = true;
         this.actions[0](function() {
-            that.actions.splice(0, 1);
-            that.processing = false;
-            if (that.actions.length) {
-                that._run();
+            this.actions.splice(0, 1);
+            this.processing = false;
+            if (this.actions.length) {
+                this._run();
             }
-        }, function() {
-            that.fatal('Error while performing step');
-        });
+        }.bind(this), function() {
+            this.fatal('Error while performing step');
+        }.bind(this));
     }
     log(message) {
         console.log(message);
@@ -77,35 +72,52 @@ class Haunt {
         if (typeof func !== 'function') {
             this.fatal('Parameter for `then` is not a function');
         }
-        var that = this;
         this._push(function(resolve, reject) {
-            func.call(that);
+            func.call(this);
             resolve();
-        });
+        }.bind(this));
         return this;
     }
+    /**
+     * Run an optional callback and finish the process
+     *
+     * @param {function} [callback] - callback to run before exiting the process
+     */
     end(func) {
-        var that = this;
         this._push(function(resolve, reject) {
             if (typeof func === 'function') {
-                func.call(that);
+                func.call(this);
             }
             phantom.exit();
-        });
+        }.bind(this));
         // no return here
     }
-    return() {
-        var that = this;
-        this._push(function(resolve, reject) {
-            console.log(JSON.stringify(that.data));
-            phantom.exit();
-        });
-        // no return here
+    check(variable, type) {
+        if (typeof variable !== type) {
+            this.fatal('Parameter ' + variable + ' is not of type `' + type + '`');
+        }
     }
     fatal(message) {
         console.error('FATAL ERROR: ' + message);
-        phantom.exit();
+        phantom.exit(1);
     }
+    /**
+     * Output this.data to console and end the process, used to return data to external scripts
+     *
+     * @param {function} [callback] - callback to run before exiting the process
+     */
+    return(func) {
+        this.end(function() {
+            if (typeof func === 'function') {
+                func.call(this);
+            }
+            console.log(JSON.stringify(this.data));            
+        });
+        // no return here
+    }
+    /**
+     * Setter/getter for data storage
+     */
     setData(key, value) {
         this.dataStorage[key] = value;
         return this;
@@ -117,9 +129,9 @@ class Haunt {
             return this.dataStorage;
         }
     }
-    /* 
-    Alias for getData(); but can be used without brackets
-    */
+    /**
+     * Alias for getData(); but can be used without brackets
+     */
     get data() {
         return this.getData();
     }
@@ -133,20 +145,43 @@ class Haunt {
         this.log(trace)
     }
     
-    /*
-    Synchronous APIs
-    */
-    getTitle() {
-        return this.page.evaluate(function() {
-            if (document) {
-                return document.title;
+    /**
+     * Synchronous APIs
+     */
+    doClick(selector) {
+        return this.page.evaluate(function(selector) {
+            // http://stackoverflow.com/a/17789929/266561
+            if (!HTMLElement.prototype.click) {
+                HTMLElement.prototype.click = function() {
+                    var ev = document.createEvent('MouseEvent');
+                    ev.initMouseEvent(
+                        'click',
+                        /*bubble*/true, /*cancelable*/true,
+                        window, null,
+                        0, 0, 0, 0, /*coordinates*/
+                        false, false, false, false, /*modifier keys*/
+                        0/*button=left*/, null
+                    );
+                    this.dispatchEvent(ev);
+                };
             }
-        });
+            // now find the element
+            var elem = document.querySelector(selector);
+            if (elem) {
+                elem.click();
+                return true;
+            } else {
+                return false;
+            }
+        }, selector);
     }
-    getURL() {
-        return this.page.evaluate(function() {
-            return window.location.toString();
-        });
+    getAttr(selector, attr) {
+        return this.page.evaluate(function(selector, attr) {
+            var element = document.querySelector(selector);
+            if (element) {
+                return element.getAttribute(attr);
+            }
+        }, selector, attr);
     }
     getHtml(selector) {
         return this.page.evaluate(function(selector) {
@@ -212,6 +247,29 @@ class Haunt {
             return result;
         }, selector, attribute, props);
     }
+    getStyle(selector, style) {
+        return this.page.evaluate(function(selector, style) {
+            var element = document.querySelector(selector);
+            if (element) {
+                return element.style[style];
+            }
+        }, selector, style);
+    }
+    getTitle() {
+        return this.page.evaluate(function() {
+            if (document) {
+                return document.title;
+            }
+        });
+    }
+    getURL() {
+        return this.page.evaluate(function() {
+            return window.location.toString();
+        });
+    }
+    /**
+     * Data processing filters ran in Phantom context
+     */
     phantomDataFilter() {
         window.phantomDataFilter = function(what, filters) {
             what = String(what); // is it ok to do like this?
@@ -230,130 +288,107 @@ class Haunt {
             return what;
         }
     }
-    doClick(selector) {
-        return this.page.evaluate(function(selector) {
-            // http://stackoverflow.com/a/17789929/266561
-            if (!HTMLElement.prototype.click) {
-                HTMLElement.prototype.click = function() {
-                    var ev = document.createEvent('MouseEvent');
-                    ev.initMouseEvent(
-                        'click',
-                        /*bubble*/true, /*cancelable*/true,
-                        window, null,
-                        0, 0, 0, 0, /*coordinates*/
-                        false, false, false, false, /*modifier keys*/
-                        0/*button=left*/, null
-                    );
-                    this.dispatchEvent(ev);
-                };
-            }
-            // now find the element
-            var elem = document.querySelector(selector);
-            if (elem) {
-                elem.click();
-                return true;
-            } else {
-                return false;
-            }
-        }, selector);
-    }
-
-    /* 
-    API starts here
-    */
-    get(url) {
-        var that = this;
+    
+    /** 
+     * Asynchronous API starts here
+     * These are chainable functions that make up the Haunt scenario
+     */
+    attr(selector, attr, func) {
+        this.check(selector, 'string');
+        this.check(attr, 'string');
+        this.check(func, 'function');
         this._push(function(resolve, reject) {
-            that.page.open(url, function(status) {
-                resolve(status);
-            });
-        });
-        return this;
-    }
-    post(url, data) {
-        return this;
-    }
-    url(func) {
-        if (typeof func !== 'function') {
-            this.fatal('Parameter for `url` is not a function');
-        }
-        var that = this;
-        that._push(function(resolve, reject) {
-            func.call(that, that.getURL());
+            func.call(this, this.getAttr(selector, attr));
             resolve();
-        });
+        }.bind(this));
         return this;
     }
-    title(func) {
-        if (typeof func !== 'function') {
-            this.fatal('Parameter for `title` is not a function');
-        }
-        var that = this;
-        that._push(function(resolve, reject) {
-            func.call(that, that.getTitle());
-            resolve();
-        });
-        return this;
-    }
-    html(selector, func) {
-        if (typeof selector !== 'string') {
-            this.fatal('First parameter for `html` is not a string');
-        }
-        if (typeof func !== 'function') {
-            this.fatal('Second parameter for `html` is not a function');
-        }
-        var that = this;
+    click(selector) {
         this._push(function(resolve, reject) {
-            func.call(that, that.getHtml(selector));
+            this.doClick(selector);
             resolve();
-        });
+        }.bind(this));
         return this;
     }
     dataList(key, selector, attribute, props) {
-        if (typeof selector !== 'string') {
-            this.fatal('First parameter for `dataList` is not a string');
-        }
-        if (typeof key !== 'string') {
-            this.fatal('Second parameter for `dataList` is not a string');
-        }
+        this.check(selector, 'string');
+        this.check(key, 'string');
         if (typeof attribute === 'object' && typeof props === 'undefined') {
             props = attribute;
             attribute = ''; 
         }
-        var that = this;
         this._push(function(resolve, reject) {
-            var results = that.getHtmlAll(selector, attribute, props);
-            that.setData(key, results);
+            var results = this.getHtmlAll(selector, attribute, props);
+            this.setData(key, results);
             resolve();
-        });
+        }.bind(this));
         return this;
     }
-    click(selector) {
-        var that = this;
+    get(url) {
         this._push(function(resolve, reject) {
-            that.doClick(selector);
+            this.page.open(url, function(status) {
+                resolve(status);
+            });
+        }.bind(this));
+        return this;
+    }
+    html(selector, func) {
+        this.check(selector, 'string');
+        this.check(func, 'function');
+        this._push(function(resolve, reject) {
+            func.call(this, this.getHtml(selector));
             resolve();
-        });
+        }.bind(this));
+        return this;
+    }
+    /**
+     * TODO: POST data to url
+     */
+    post(url, data) {
+        return this;
+    }
+    style(selector, style, func) {
+        this.check(selector, 'string');
+        this.check(style, 'string');
+        this.check(func, 'function');
+        this._push(function(resolve, reject) {
+            func.call(this, this.getStyle(selector, style));
+            resolve();
+        }.bind(this));
+        return this;
+    }
+    title(func) {
+        this.check(func, 'function');        
+        this._push(function(resolve, reject) {
+            func.call(this, this.getTitle());
+            resolve();
+        }.bind(this));
+        return this;
+    }
+    url(func) {
+        this.check(func, 'function');        
+        this._push(function(resolve, reject) {
+            func.call(this, this.getURL());
+            resolve();
+        }.bind(this));
         return this;
     }
     wait(ms) {
-        var that = this;
         this._push(function(resolve, reject) {
             setTimeout(function() {
                 resolve();
             }, ms);
-        });
+        }.bind(this));
         return this;
     }
     waitFor(selector, ms) {
-        var that = this;
-        that._push(function(resolve, reject) {
+        this._push(function(resolve, reject) {
             var t = setTimeout(function() {
                 clearInterval(i);
                 reject();
-            }, ms || that.options.waitForTimeout);
+            }, ms || this.options.waitForTimeout);
             var i = setInterval(function() {
-                var result = that.page.evaluate(function(selector) {
+                var result = this.page.evaluate(function(selector) {
                     return !!document.querySelector(selector);
                 }, selector);
                 if (result) {
@@ -361,8 +396,8 @@ class Haunt {
                     clearTimeout(t);
                     resolve();
                 }
-            }, that.options.waitForPoll);
-        });
+            }.bind(this), this.options.waitForPoll);
+        }.bind(this));
         return this;
     }
 }
