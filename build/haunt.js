@@ -6,10 +6,13 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-/*
-Haunt.js
-https://github.com/javascriptlove/haunt/
-*/
+/**
+ * Haunt.js
+ * 
+ * A data mining library for PhantomJS.
+ * 
+ * https://github.com/javascriptlove/haunt/
+ */
 
 var webpage = require('webpage');
 
@@ -38,6 +41,7 @@ var Haunt = function () {
         }
         this.dataStorage = {};
         this.actions = [];
+        this.currentAction = 0;
         this.processing = false;
         this.page = webpage.create();
 
@@ -81,14 +85,30 @@ var Haunt = function () {
         key: '_run',
         value: function _run() {
             this.processing = true;
-            this.actions[0](function () {
-                this.actions.splice(0, 1);
+            this.actions[this.currentAction](function () {
+                // resolve
+                this.currentAction++;
                 this.processing = false;
-                if (this.actions.length) {
+                if (this.currentAction < this.actions.length) {
                     this._run();
                 }
             }.bind(this), function () {
-                this.fatal('Error while performing step');
+                // reject
+                var args = Array.prototype.slice.call(arguments);
+                var s = 'Error while performing step #' + (this.currentAction + 1);
+                if (args.length) {
+                    s += "\n" + args[0] + '(';
+                    args.splice(0, 1);
+                    args = args.map(function (arg) {
+                        if (typeof arg === 'function' || (typeof arg === 'undefined' ? 'undefined' : _typeof(arg)) === 'object') {
+                            return '[' + (typeof arg === 'undefined' ? 'undefined' : _typeof(arg)) + ']';
+                        }
+                        return JSON.stringify(arg);
+                    });
+                    s += args.join(', ');
+                    s += ')';
+                }
+                this.fatal(s);
             }.bind(this));
         }
     }, {
@@ -136,12 +156,7 @@ var Haunt = function () {
     }, {
         key: 'fatal',
         value: function fatal(message) {
-            console.error('FATAL ERROR: ' + message);
-            try {
-                throw new Error('Call stack');
-            } catch (e) {
-                console.error(e.stack);
-            }
+            console.error('\x1b[31mFATAL ERROR: ' + message + '\x1b[0m');
             phantom.exit(1);
         }
         /**
@@ -317,6 +332,27 @@ var Haunt = function () {
             }, selector, style);
         }
     }, {
+        key: 'getComputedStyle',
+        value: function (_getComputedStyle) {
+            function getComputedStyle(_x, _x2) {
+                return _getComputedStyle.apply(this, arguments);
+            }
+
+            getComputedStyle.toString = function () {
+                return _getComputedStyle.toString();
+            };
+
+            return getComputedStyle;
+        }(function (selector, style) {
+            return this.page.evaluate(function (selector, style) {
+                var element = document.querySelector(selector);
+                if (element) {
+                    var computed = getComputedStyle(element);
+                    return computed[style];
+                }
+            }, selector, style);
+        })
+    }, {
         key: 'getTitle',
         value: function getTitle() {
             return this.page.evaluate(function () {
@@ -379,6 +415,18 @@ var Haunt = function () {
         value: function click(selector) {
             this._push(function (resolve, reject) {
                 this.doClick(selector);
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
+        key: 'computedStyle',
+        value: function computedStyle(selector, style, func) {
+            this.check(selector, 'string');
+            this.check(style, 'string');
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.getComputedStyle(selector, style));
                 resolve();
             }.bind(this));
             return this;
@@ -478,7 +526,7 @@ var Haunt = function () {
             this._push(function (resolve, reject) {
                 var t = setTimeout(function () {
                     clearInterval(i);
-                    reject();
+                    reject('waitFor', selector, ms);
                 }, ms || this.options.waitForTimeout);
                 var i = setInterval(function () {
                     var result = this.page.evaluate(function (selector) {

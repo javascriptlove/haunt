@@ -1,7 +1,10 @@
-/*
-Haunt.js
-https://github.com/javascriptlove/haunt/
-*/
+/**
+ * Haunt.js
+ * 
+ * A data mining library for PhantomJS.
+ * 
+ * https://github.com/javascriptlove/haunt/
+ */
 
 var webpage = require('webpage');
 
@@ -28,6 +31,7 @@ class Haunt {
         }
         this.dataStorage = {};
         this.actions = [];
+        this.currentAction = 0;
         this.processing = false;
         this.page = webpage.create();
 
@@ -65,14 +69,30 @@ class Haunt {
     }
     _run() {
         this.processing = true;
-        this.actions[0](function() {
-            this.actions.splice(0, 1);
+        this.actions[this.currentAction](function() {
+            // resolve
+            this.currentAction++;
             this.processing = false;
-            if (this.actions.length) {
+            if (this.currentAction < this.actions.length) {
                 this._run();
             }
         }.bind(this), function() {
-            this.fatal('Error while performing step');
+            // reject
+            var args = Array.prototype.slice.call(arguments);
+            var s = 'Error while performing step #' + (this.currentAction+1);
+            if (args.length) {
+                s += "\n" + args[0] + '(';
+                args.splice(0, 1);
+                args = args.map(function(arg) {
+                    if (typeof arg === 'function' || typeof arg === 'object') {
+                        return '[' + typeof arg + ']';
+                    }
+                    return JSON.stringify(arg);
+                });
+                s += args.join(', ');
+                s += ')';
+            }
+            this.fatal(s);
         }.bind(this));
     }
     log(message) {
@@ -109,12 +129,7 @@ class Haunt {
         }
     }
     fatal(message) {
-        console.error('FATAL ERROR: ' + message);
-        try {
-            throw new Error('Call stack');
-        } catch(e) {
-            console.error(e.stack);
-        }
+        console.error('\x1b[31mFATAL ERROR: ' + message + '\x1b[0m');
         phantom.exit(1);
     }
     /**
@@ -271,6 +286,15 @@ class Haunt {
             }
         }, selector, style);
     }
+    getComputedStyle(selector, style) {
+        return this.page.evaluate(function(selector, style) {
+            var element = document.querySelector(selector);
+            if (element) {
+                var computed = getComputedStyle(element);
+                return computed[style];
+            }
+        }, selector, style);
+    }
     getTitle() {
         return this.page.evaluate(function() {
             if (document) {
@@ -322,6 +346,16 @@ class Haunt {
     click(selector) {
         this._push(function(resolve, reject) {
             this.doClick(selector);
+            resolve();
+        }.bind(this));
+        return this;
+    }
+    computedStyle(selector, style, func) {
+        this.check(selector, 'string');
+        this.check(style, 'string');
+        this.check(func, 'function');
+        this._push(function(resolve, reject) {
+            func.call(this, this.getComputedStyle(selector, style));
             resolve();
         }.bind(this));
         return this;
@@ -402,7 +436,7 @@ class Haunt {
         this._push(function(resolve, reject) {
             var t = setTimeout(function() {
                 clearInterval(i);
-                reject();
+                reject('waitFor', selector, ms);
             }, ms || this.options.waitForTimeout);
             var i = setInterval(function() {
                 var result = this.page.evaluate(function(selector) {
