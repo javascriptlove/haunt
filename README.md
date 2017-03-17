@@ -90,6 +90,10 @@ Accepts an `options` object with the next keys:
 
 `.end([func])` end the phantom process and run an optional callback before that.
 
+**`exists`**
+
+`.exists(selector)` check if the specified selector exists on page (including the invisible ones).
+
 **`get, go, open`**
 
 `.get(url)` navigate to a given URL and continue to next step when the page loading is done.

@@ -214,6 +214,12 @@ class Haunt {
             }
         }, selector, attr);
     }
+    getExists(selector) {
+        return this.page.evaluate(function(selector) {
+            var element = document.querySelector(selector);
+            return !!element;
+        }, selector);
+    }
     getHtml(selector) {
         return this.page.evaluate(function(selector) {
             var element = document.querySelector(selector);
@@ -388,6 +394,15 @@ class Haunt {
         this.check(func, 'function');
         this._push(function(resolve, reject) {
             func.call(this, this.getHtml(selector));
+            resolve();
+        }.bind(this));
+        return this;
+    }
+    exists(selector, func) {
+        this.check(selector, 'string');
+        this.check(func, 'function');
+        this._push(function(resolve, reject) {
+            func.call(this, this.getExists(selector));
             resolve();
         }.bind(this));
         return this;
