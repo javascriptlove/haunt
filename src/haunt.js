@@ -7,6 +7,7 @@
  */
 
 var webpage = require('webpage');
+var fs = require('fs');
 
 class Haunt {
     constructor(options) {
@@ -53,6 +54,7 @@ class Haunt {
         }
 
         this.page.settings.loadImages = !!this.options.loadImages;
+        this.page.settings.clearMemoryCaches = true;
         
         // aliases for usability and memory relaxing
         this.open = this.start = this.go = this.get;
@@ -208,6 +210,17 @@ class Haunt {
                 return false;
             }
         }, selector);
+    }
+    doToFileJSON(key, file) {
+        var data;
+        if (typeof file === 'undefined') {
+            // optional [key] parameter
+            data = this.dataStorage;
+            file = key;
+        } else {
+            data = this.getData(key);
+        }
+        fs.write(file, JSON.stringify(data, true, 2), 'w');
     }
     getAttr(selector, attr) {
         return this.page.evaluate(function(selector, attr) {
@@ -386,6 +399,7 @@ class Haunt {
     get(url) {
         this._push(function(resolve, reject) {
             this.requestedUrl = url;
+            this.page.clearMemoryCache();
             this.page.open(url, function(status) {
                 resolve(status);
             });
@@ -430,6 +444,14 @@ class Haunt {
         this.check(func, 'function');        
         this._push(function(resolve, reject) {
             func.call(this, this.getTitle());
+            resolve();
+        }.bind(this));
+        return this;
+    }
+    toFileJSON(key, file) {
+        this.check(key, 'string');
+        this._push(function(resolve, reject) {
+            this.doToFileJSON.call(this, key, file);
             resolve();
         }.bind(this));
         return this;
