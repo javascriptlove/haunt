@@ -104,8 +104,11 @@ class Haunt {
             this.fatal('Parameter for `then` is not a function');
         }
         this._push(function(resolve, reject) {
-            func.call(this);
-            resolve();
+            func.call(this, resolve.bind(this));
+            // if callback accepts arguments, this means it should run done() when ready
+            if (func.length === 0) {
+                resolve();
+            }
         }.bind(this));
         return this;
     }

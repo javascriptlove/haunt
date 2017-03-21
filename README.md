@@ -72,7 +72,7 @@ Accepts an `options` object with the next keys:
 
 **`attr`**
 
-`.attr(selector, attribute)` find the specified selector and get its attribute value.
+`.attr(selector, attribute, callback(attributeValue))` find the specified selector and get its attribute value.
 
 **`click`**
 
@@ -80,7 +80,7 @@ Accepts an `options` object with the next keys:
 
 **`computedStyle`**
 
-`.computedStyle(selector, styleName)` find the specified selector and get its computed style value. Uses Window.getComputedStyle
+`.computedStyle(selector, styleName, callback(styleValue))` find the specified selector and get its computed style value. Uses Window.getComputedStyle
 
 **`dataList`**
 
@@ -88,11 +88,11 @@ Accepts an `options` object with the next keys:
 
 **`end`**
 
-`.end([func])` end the phantom process and run an optional callback before that.
+`.end([callback])` end the phantom process and run an optional callback before that.
 
 **`exists`**
 
-`.exists(selector)` check if the specified selector exists on page (including the invisible ones).
+`.exists(selector, callback(exists))` check if the specified selector exists on page (including the invisible ones).
 
 **`get, go, open`**
 
@@ -100,19 +100,19 @@ Accepts an `options` object with the next keys:
 
 **`html`**
 
-`.html(selector)` returns the innerHTML of the given selector. Synchronous is `.getHtml`.
+`.html(selector, callback(html))` returns the innerHTML of the given selector. Synchronous is `.getHtml`.
 
 **`return`**
 
-`.return()` return `this.data` to the console and end the phantom process.
+`.return([callback])` return `this.data` to the console and end the phantom process.
 
 **`style`**
 
-`.style(selector, styleName)` find the specified selector and get its style value. Useful when inline styles specified.
+`.style(selector, styleName, callback(styleValue))` find the specified selector and get its style value. Useful when inline styles specified.
 
 **`title`**
 
-`.title(func)` get the document title and run the callback. Synchronous is `.getTitle`.
+`.title(callback(title))` get the document title and run the callback. Synchronous is `.getTitle`.
 
 **`wait`**
 
