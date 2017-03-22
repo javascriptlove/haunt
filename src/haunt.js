@@ -7,6 +7,7 @@
  */
 
 var webpage = require('webpage');
+var fs = require('fs');
 
 class Haunt {
     constructor(options) {
@@ -67,33 +68,35 @@ class Haunt {
             this._run();
         }
     }
+    _onResolve() {
+        // resolve
+        this.currentAction++;
+        this.processing = false;
+        if (this.currentAction < this.actions.length) {
+            this._run();
+        }
+    }
+    _onReject() {
+        // reject
+        var args = Array.prototype.slice.call(arguments);
+        var s = 'Error while performing step #' + (this.currentAction+1);
+        if (args.length) {
+            s += "\n" + args[0] + '(';
+            args.splice(0, 1);
+            args = args.map(function(arg) {
+                if (typeof arg === 'function' || typeof arg === 'object') {
+                    return '[' + typeof arg + ']';
+                }
+                return JSON.stringify(arg);
+            });
+            s += args.join(', ');
+            s += ')';
+        }
+        this.fatal(s);
+    }
     _run() {
         this.processing = true;
-        this.actions[this.currentAction](function() {
-            // resolve
-            this.currentAction++;
-            this.processing = false;
-            if (this.currentAction < this.actions.length) {
-                this._run();
-            }
-        }.bind(this), function() {
-            // reject
-            var args = Array.prototype.slice.call(arguments);
-            var s = 'Error while performing step #' + (this.currentAction+1);
-            if (args.length) {
-                s += "\n" + args[0] + '(';
-                args.splice(0, 1);
-                args = args.map(function(arg) {
-                    if (typeof arg === 'function' || typeof arg === 'object') {
-                        return '[' + typeof arg + ']';
-                    }
-                    return JSON.stringify(arg);
-                });
-                s += args.join(', ');
-                s += ')';
-            }
-            this.fatal(s);
-        }.bind(this));
+        this.actions[this.currentAction](this._onResolve.bind(this), this._onReject.bind(this));
     }
     log(message) {
         console.log(message);
@@ -148,6 +151,21 @@ class Haunt {
             console.log(JSON.stringify(this.data));            
         });
         // no return here
+    }
+    /**
+     * Output array of data to file
+     *
+     * @param {array} key - key name as stored in data
+     * @param {string} file - path to a file
+     */
+    toFileCSV(key, file) {
+        this.check(key, 'string');
+        this.check(file, 'string');
+        this._push(function(resolve, reject) {
+            this.doToFileCSV.call(this, key, file);
+            resolve();
+        }.bind(this));
+        return this;
     }
     /**
      * Setter/getter for data storage
@@ -208,6 +226,30 @@ class Haunt {
                 return false;
             }
         }, selector);
+    }
+    doToFileCSV(key, file) {
+        var data = this.getData(key);
+        var separator = ',';
+        var delimiter = '"';
+        var stream = fs.open(file, 'w');
+        var headers = [];
+        data.forEach(function(item, i) {
+            if (i === 0) {
+                // headers
+                headers = Object.keys(item);
+                var keys = headers.map(function(key) {
+                    return delimiter + key + delimiter;
+                });
+                stream.write(keys.join(separator));
+            } 
+            var values = [];
+            headers.forEach(function(key) {
+                values.push(delimiter + String(item[key]).replace(new RegExp('/' + delimiter + '/', 'g'), '\\' + delimiter) + delimiter);
+            });
+            stream.write("\n" + values.join(separator));
+        }, this);
+        stream.close();
+        return data.length;
     }
     getAttr(selector, attr) {
         return this.page.evaluate(function(selector, attr) {
