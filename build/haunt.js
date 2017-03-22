@@ -24,11 +24,10 @@ var Haunt = function () {
         this.options = {};
         this.options.waitForTimeout = 30000;
         this.options.waitForPoll = 100;
+        this.options.log = false;
         if ((typeof options === 'undefined' ? 'undefined' : _typeof(options)) === 'object') {
-            this.options.log = !!options.log;
-
-            if (!this.options.log) {
-                this.log = function () {}; // reset to nothing
+            if (options.log !== undefined) {
+                this.options.log = !!options.log;
             }
             if (options.waitForTimeout) {
                 this.options.waitForTimeout = options.waitForTimeout;
@@ -40,6 +39,11 @@ var Haunt = function () {
                 this.options.blockIframes = !!options.blockIframes;
             }
         }
+
+        if (!this.options.log) {
+            this.log = function () {}; // reset to nothing
+        }
+
         this.dataStorage = {};
         this.actions = [];
         this.currentAction = 0;
@@ -84,34 +88,40 @@ var Haunt = function () {
             }
         }
     }, {
+        key: '_onResolve',
+        value: function _onResolve() {
+            // resolve
+            this.currentAction++;
+            this.processing = false;
+            if (this.currentAction < this.actions.length) {
+                this._run();
+            }
+        }
+    }, {
+        key: '_onReject',
+        value: function _onReject() {
+            // reject
+            var args = Array.prototype.slice.call(arguments);
+            var s = 'Error while performing step #' + (this.currentAction + 1);
+            if (args.length) {
+                s += "\n" + args[0] + '(';
+                args.splice(0, 1);
+                args = args.map(function (arg) {
+                    if (typeof arg === 'function' || (typeof arg === 'undefined' ? 'undefined' : _typeof(arg)) === 'object') {
+                        return '[' + (typeof arg === 'undefined' ? 'undefined' : _typeof(arg)) + ']';
+                    }
+                    return JSON.stringify(arg);
+                });
+                s += args.join(', ');
+                s += ')';
+            }
+            this.fatal(s);
+        }
+    }, {
         key: '_run',
         value: function _run() {
             this.processing = true;
-            this.actions[this.currentAction](function () {
-                // resolve
-                this.currentAction++;
-                this.processing = false;
-                if (this.currentAction < this.actions.length) {
-                    this._run();
-                }
-            }.bind(this), function () {
-                // reject
-                var args = Array.prototype.slice.call(arguments);
-                var s = 'Error while performing step #' + (this.currentAction + 1);
-                if (args.length) {
-                    s += "\n" + args[0] + '(';
-                    args.splice(0, 1);
-                    args = args.map(function (arg) {
-                        if (typeof arg === 'function' || (typeof arg === 'undefined' ? 'undefined' : _typeof(arg)) === 'object') {
-                            return '[' + (typeof arg === 'undefined' ? 'undefined' : _typeof(arg)) + ']';
-                        }
-                        return JSON.stringify(arg);
-                    });
-                    s += args.join(', ');
-                    s += ')';
-                }
-                this.fatal(s);
-            }.bind(this));
+            this.actions[this.currentAction](this._onResolve.bind(this), this._onReject.bind(this));
         }
     }, {
         key: 'log',
@@ -246,6 +256,32 @@ var Haunt = function () {
                     return false;
                 }
             }, selector);
+        }
+    }, {
+        key: 'doToFileCSV',
+        value: function doToFileCSV(key, file) {
+            var data = this.getData(key);
+            var separator = ',';
+            var delimiter = '"';
+            var stream = fs.open(file, 'w');
+            var headers = [];
+            data.forEach(function (item, i) {
+                if (i === 0) {
+                    // headers
+                    headers = Object.keys(item);
+                    var keys = headers.map(function (key) {
+                        return delimiter + key + delimiter;
+                    });
+                    stream.write(keys.join(separator));
+                }
+                var values = [];
+                headers.forEach(function (key) {
+                    values.push(delimiter + String(item[key]).replace(new RegExp('/' + delimiter + '/', 'g'), '\\' + delimiter) + delimiter);
+                });
+                stream.write("\n" + values.join(separator));
+            }, this);
+            stream.close();
+            return data.length;
         }
     }, {
         key: 'doToFileJSON',
@@ -538,6 +574,31 @@ var Haunt = function () {
             }.bind(this));
             return this;
         }
+        /**
+         * Output array of data to file
+         *
+         * @param {string} key - key name as stored in data
+         * @param {string} file - path to a file
+         */
+
+    }, {
+        key: 'toFileCSV',
+        value: function toFileCSV(key, file) {
+            this.check(key, 'string');
+            this.check(file, 'string');
+            this._push(function (resolve, reject) {
+                this.doToFileCSV.call(this, key, file);
+                resolve();
+            }.bind(this));
+            return this;
+        }
+        /**
+         * Output array of data or object to file. If key parameter is omitted, outputs everything from data to file.
+         *
+         * @param {string} [key] - key name as stored in data
+         * @param {string} file - path to a file
+         */
+
     }, {
         key: 'toFileJSON',
         value: function toFileJSON(key, file) {

@@ -14,11 +14,10 @@ class Haunt {
         this.options = {};
         this.options.waitForTimeout = 30000;
         this.options.waitForPoll = 100;
+        this.options.log = false;
         if (typeof options === 'object') {
-            this.options.log = !!options.log;
-
-            if (!this.options.log) {
-                this.log = function() { }; // reset to nothing
+            if (options.log !== undefined) {
+                this.options.log = !!options.log;
             }
             if (options.waitForTimeout) {
                 this.options.waitForTimeout = options.waitForTimeout;
@@ -30,6 +29,11 @@ class Haunt {
                 this.options.blockIframes = !!options.blockIframes;
             }
         }
+
+        if (!this.options.log) {
+            this.log = function() { }; // reset to nothing
+        }
+            
         this.dataStorage = {};
         this.actions = [];
         this.currentAction = 0;
