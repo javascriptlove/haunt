@@ -15,6 +15,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  */
 
 var webpage = require('webpage');
+var fs = require('fs');
 
 var Haunt = function () {
     function Haunt(options) {
@@ -63,6 +64,7 @@ var Haunt = function () {
         }
 
         this.page.settings.loadImages = !!this.options.loadImages;
+        this.page.settings.clearMemoryCaches = true;
 
         // aliases for usability and memory relaxing
         this.open = this.start = this.go = this.get;
@@ -244,6 +246,19 @@ var Haunt = function () {
                     return false;
                 }
             }, selector);
+        }
+    }, {
+        key: 'doToFileJSON',
+        value: function doToFileJSON(key, file) {
+            var data;
+            if (typeof file === 'undefined') {
+                // optional [key] parameter
+                data = this.dataStorage;
+                file = key;
+            } else {
+                data = this.getData(key);
+            }
+            fs.write(file, JSON.stringify(data, true, 2), 'w');
         }
     }, {
         key: 'getAttr',
@@ -463,6 +478,7 @@ var Haunt = function () {
         value: function get(url) {
             this._push(function (resolve, reject) {
                 this.requestedUrl = url;
+                this.page.clearMemoryCache();
                 this.page.open(url, function (status) {
                     resolve(status);
                 });
@@ -518,6 +534,16 @@ var Haunt = function () {
             this.check(func, 'function');
             this._push(function (resolve, reject) {
                 func.call(this, this.getTitle());
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
+        key: 'toFileJSON',
+        value: function toFileJSON(key, file) {
+            this.check(key, 'string');
+            this._push(function (resolve, reject) {
+                this.doToFileJSON.call(this, key, file);
                 resolve();
             }.bind(this));
             return this;

@@ -54,7 +54,8 @@ class Haunt {
         }
 
         this.page.settings.loadImages = !!this.options.loadImages;
-        
+        this.page.settings.clearMemoryCaches = true;
+
         // aliases for usability and memory relaxing
         this.open = this.start = this.go = this.get;
         return this;
@@ -153,21 +154,6 @@ class Haunt {
         // no return here
     }
     /**
-     * Output array of data to file
-     *
-     * @param {array} key - key name as stored in data
-     * @param {string} file - path to a file
-     */
-    toFileCSV(key, file) {
-        this.check(key, 'string');
-        this.check(file, 'string');
-        this._push(function(resolve, reject) {
-            this.doToFileCSV.call(this, key, file);
-            resolve();
-        }.bind(this));
-        return this;
-    }
-    /**
      * Setter/getter for data storage
      */
     setData(key, value) {
@@ -241,7 +227,7 @@ class Haunt {
                     return delimiter + key + delimiter;
                 });
                 stream.write(keys.join(separator));
-            } 
+            }
             var values = [];
             headers.forEach(function(key) {
                 values.push(delimiter + String(item[key]).replace(new RegExp('/' + delimiter + '/', 'g'), '\\' + delimiter) + delimiter);
@@ -250,6 +236,17 @@ class Haunt {
         }, this);
         stream.close();
         return data.length;
+    }
+    doToFileJSON(key, file) {
+        var data;
+        if (typeof file === 'undefined') {
+            // optional [key] parameter
+            data = this.dataStorage;
+            file = key;
+        } else {
+            data = this.getData(key);
+        }
+        fs.write(file, JSON.stringify(data, true, 2), 'w');
     }
     getAttr(selector, attr) {
         return this.page.evaluate(function(selector, attr) {
@@ -428,6 +425,7 @@ class Haunt {
     get(url) {
         this._push(function(resolve, reject) {
             this.requestedUrl = url;
+            this.page.clearMemoryCache();
             this.page.open(url, function(status) {
                 resolve(status);
             });
@@ -472,6 +470,35 @@ class Haunt {
         this.check(func, 'function');        
         this._push(function(resolve, reject) {
             func.call(this, this.getTitle());
+            resolve();
+        }.bind(this));
+        return this;
+    }
+    /**
+     * Output array of data to file
+     *
+     * @param {string} key - key name as stored in data
+     * @param {string} file - path to a file
+     */
+    toFileCSV(key, file) {
+        this.check(key, 'string');
+        this.check(file, 'string');
+        this._push(function(resolve, reject) {
+            this.doToFileCSV.call(this, key, file);
+            resolve();
+        }.bind(this));
+        return this;
+    }
+    /**
+     * Output array of data or object to file. If key parameter is omitted, outputs everything from data to file.
+     *
+     * @param {string} [key] - key name as stored in data
+     * @param {string} file - path to a file
+     */
+    toFileJSON(key, file) {
+        this.check(key, 'string');
+        this._push(function(resolve, reject) {
+            this.doToFileJSON.call(this, key, file);
             resolve();
         }.bind(this));
         return this;
