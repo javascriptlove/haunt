@@ -15,9 +15,13 @@ class Haunt {
         this.options.waitForTimeout = 30000;
         this.options.waitForPoll = 100;
         this.options.log = false;
+        this.options.autoReturn = false;
         if (typeof options === 'object') {
             if (options.log !== undefined) {
                 this.options.log = !!options.log;
+            }
+            if (options.autoReturn !== undefined) {
+                this.options.autoReturn = !!options.autoReturn;                
             }
             if (options.waitForTimeout) {
                 this.options.waitForTimeout = options.waitForTimeout;
@@ -79,6 +83,8 @@ class Haunt {
         this.processing = false;
         if (this.currentAction < this.actions.length) {
             this._run();
+        } else if (this.options.autoReturn) {
+            this.return();
         }
     }
     _onReject() {
@@ -190,6 +196,30 @@ class Haunt {
     /**
      * Synchronous APIs
      */
+    doAjax(method, url, data, resolve, reject) {
+        var ajaxName = 'ajax' + Math.ceil(Math.random() * 1000000);
+        this.page.evaluate(function(ajaxName, method, url, data) {
+            var xhr = new XMLHttpRequest();
+            xhr.open(method.toUpperCase(), url, true);
+            xhr.send(data);
+            window[ajaxName] = xhr;
+        }, ajaxName, method, url, data);
+        this.doWaitFor(function() {
+            // resolve
+            resolve(this.page.evaluate(function(ajaxName) {
+                return {
+                    status: window[ajaxName].status,
+                    headers: window[ajaxName].getAllResponseHeaders().split("\r\n"),
+                    response: window[ajaxName].response,
+                    responseText: window[ajaxName].responseText,
+                    responseXML: window[ajaxName].responseXML,
+                    readyState: window[ajaxName].readyState
+                };
+            }, ajaxName));
+        }.bind(this), reject, null, function(ajaxName) {
+            return window[ajaxName].readyState == 4; // Done
+        }, ajaxName);
+    }
     doClick(selector) {
         return this.page.evaluate(function(selector) {
             // http://stackoverflow.com/a/17789929/266561
@@ -214,6 +244,15 @@ class Haunt {
                 return true;
             } else {
                 return false;
+            }
+        }, selector);
+    }
+    doGetValue(selector) {
+        this.log('Getting value for ' + selector);
+        return this.page.evaluate(function(selector) {
+            var element = document.querySelector(selector);
+            if (element) {
+                return element.value;
             }
         }, selector);
     }
@@ -252,7 +291,33 @@ class Haunt {
         }
         fs.write(file, JSON.stringify(data, true, 2), 'w');
     }
+    doWaitFor(resolve, reject, ms, /* , args */) {
+        var args = Array.prototype.slice.call(arguments, 3);
+        var t = setTimeout(function() {
+            this.log('Timeout in waitFor, rejecting');
+            clearInterval(i);
+            reject.apply(this, ['waitFor'].concat(args));
+        }.bind(this), ms || this.options.waitForTimeout);
+        var i = setInterval(function() {
+            var result = this.page.evaluate.apply(this.page, args);
+            if (result) {
+                clearInterval(i);
+                clearTimeout(t);
+                resolve();
+            }
+        }.bind(this), this.options.waitForPoll);
+    }
+    doSetValue(selector, value) {
+        this.log('Setting value ' + value + ' for ' + selector);
+        return this.page.evaluate(function(selector, value) {
+            var element = document.querySelector(selector);
+            if (element) {
+                return element.setAttribute('value', value);
+            }
+        }, selector, value);
+    }
     getAttr(selector, attr) {
+        this.log('Getting attribute ' + attr + ' for ' + selector);
         return this.page.evaluate(function(selector, attr) {
             var element = document.querySelector(selector);
             if (element) {
@@ -261,12 +326,14 @@ class Haunt {
         }, selector, attr);
     }
     getExists(selector) {
+        this.log('Checking existense of ' + selector);
         return this.page.evaluate(function(selector) {
             var element = document.querySelector(selector);
             return !!element;
         }, selector);
     }
     getHtml(selector) {
+        this.log('Getting inner HTML of ' + selector);
         return this.page.evaluate(function(selector) {
             var element = document.querySelector(selector);
             if (element) {
@@ -385,6 +452,27 @@ class Haunt {
      * Asynchronous API starts here
      * These are chainable functions that make up the Haunt scenario
      */
+
+    /**
+     * TODO: GET/POST data to url
+     * 
+     * Ajax request with XMLHttpRequest
+     */
+    ajax(method, url, data, func) {
+        this.check(method, 'string');
+        this.check(url, 'string');
+        if (typeof data === 'function') {
+            func = data;
+            data = null;
+        }
+        this._push(function(resolve, reject) {
+            this.doAjax(method, url, data, function(results) {
+                func.call(this, results);
+                resolve();
+            }.bind(this), reject);
+        }.bind(this));
+        return this;
+    }
     attr(selector, attr, func) {
         this.check(selector, 'string');
         this.check(attr, 'string');
@@ -397,6 +485,7 @@ class Haunt {
     }
     click(selector) {
         this._push(function(resolve, reject) {
+            this.log('Clicking ' + selector);
             this.doClick(selector);
             resolve();
         }.bind(this));
@@ -428,6 +517,7 @@ class Haunt {
     }
     get(url) {
         this._push(function(resolve, reject) {
+            this.log('Loading URL ' + url);
             this.requestedUrl = url;
             this.page.clearMemoryCache();
             this.page.open(url, function(status) {
@@ -454,10 +544,13 @@ class Haunt {
         }.bind(this));
         return this;
     }
-    /**
-     * TODO: POST data to url
-     */
-    post(url, data) {
+    setValue(selector, value) {
+        this.check(selector, 'string');
+        this.check(value, 'string');
+        this._push(function(resolve, reject) {
+            this.doSetValue.call(this, selector, value);
+            resolve();
+        }.bind(this));
         return this;
     }
     style(selector, style, func) {
@@ -515,6 +608,15 @@ class Haunt {
         }.bind(this));
         return this;
     }
+    value(selector, func) {
+        this.check(selector, 'string');
+        this.check(func, 'function');
+        this._push(function(resolve, reject) {
+            func.call(this, this.doGetValue(selector));
+            resolve();
+        }.bind(this));
+        return this;
+    }
     wait(ms) {
         this._push(function(resolve, reject) {
             setTimeout(function() {
@@ -525,20 +627,10 @@ class Haunt {
     }
     waitFor(selector, ms) {
         this._push(function(resolve, reject) {
-            var t = setTimeout(function() {
-                clearInterval(i);
-                reject('waitFor', selector, ms);
-            }, ms || this.options.waitForTimeout);
-            var i = setInterval(function() {
-                var result = this.page.evaluate(function(selector) {
-                    return !!document.querySelector(selector);
-                }, selector);
-                if (result) {
-                    clearInterval(i);
-                    clearTimeout(t);
-                    resolve();
-                }
-            }.bind(this), this.options.waitForPoll);
+            this.log('Waiting for ' + selector);
+            this.doWaitFor(resolve, reject, ms, function(selector) {
+                return !!document.querySelector(selector);
+            }, selector);
         }.bind(this));
         return this;
     }

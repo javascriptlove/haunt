@@ -25,9 +25,13 @@ var Haunt = function () {
         this.options.waitForTimeout = 30000;
         this.options.waitForPoll = 100;
         this.options.log = false;
+        this.options.autoReturn = false;
         if ((typeof options === 'undefined' ? 'undefined' : _typeof(options)) === 'object') {
             if (options.log !== undefined) {
                 this.options.log = !!options.log;
+            }
+            if (options.autoReturn !== undefined) {
+                this.options.autoReturn = !!options.autoReturn;
             }
             if (options.waitForTimeout) {
                 this.options.waitForTimeout = options.waitForTimeout;
@@ -95,6 +99,8 @@ var Haunt = function () {
             this.processing = false;
             if (this.currentAction < this.actions.length) {
                 this._run();
+            } else if (this.options.autoReturn) {
+                this.return();
             }
         }
     }, {
@@ -233,6 +239,32 @@ var Haunt = function () {
          */
 
     }, {
+        key: 'doAjax',
+        value: function doAjax(method, url, data, resolve, reject) {
+            var ajaxName = 'ajax' + Math.ceil(Math.random() * 1000000);
+            this.page.evaluate(function (ajaxName, method, url, data) {
+                var xhr = new XMLHttpRequest();
+                xhr.open(method.toUpperCase(), url, true);
+                xhr.send(data);
+                window[ajaxName] = xhr;
+            }, ajaxName, method, url, data);
+            this.doWaitFor(function () {
+                // resolve
+                resolve(this.page.evaluate(function (ajaxName) {
+                    return {
+                        status: window[ajaxName].status,
+                        headers: window[ajaxName].getAllResponseHeaders().split("\r\n"),
+                        response: window[ajaxName].response,
+                        responseText: window[ajaxName].responseText,
+                        responseXML: window[ajaxName].responseXML,
+                        readyState: window[ajaxName].readyState
+                    };
+                }, ajaxName));
+            }.bind(this), reject, null, function (ajaxName) {
+                return window[ajaxName].readyState == 4; // Done
+            }, ajaxName);
+        }
+    }, {
         key: 'doClick',
         value: function doClick(selector) {
             return this.page.evaluate(function (selector) {
@@ -254,6 +286,17 @@ var Haunt = function () {
                     return true;
                 } else {
                     return false;
+                }
+            }, selector);
+        }
+    }, {
+        key: 'doGetValue',
+        value: function doGetValue(selector) {
+            this.log('Getting value for ' + selector);
+            return this.page.evaluate(function (selector) {
+                var element = document.querySelector(selector);
+                if (element) {
+                    return element.value;
                 }
             }, selector);
         }
@@ -297,8 +340,38 @@ var Haunt = function () {
             fs.write(file, JSON.stringify(data, true, 2), 'w');
         }
     }, {
+        key: 'doWaitFor',
+        value: function doWaitFor(resolve, reject, ms) /* , args */{
+            var args = Array.prototype.slice.call(arguments, 3);
+            var t = setTimeout(function () {
+                this.log('Timeout in waitFor, rejecting');
+                clearInterval(i);
+                reject.apply(this, ['waitFor'].concat(args));
+            }.bind(this), ms || this.options.waitForTimeout);
+            var i = setInterval(function () {
+                var result = this.page.evaluate.apply(this.page, args);
+                if (result) {
+                    clearInterval(i);
+                    clearTimeout(t);
+                    resolve();
+                }
+            }.bind(this), this.options.waitForPoll);
+        }
+    }, {
+        key: 'doSetValue',
+        value: function doSetValue(selector, value) {
+            this.log('Setting value ' + value + ' for ' + selector);
+            return this.page.evaluate(function (selector, value) {
+                var element = document.querySelector(selector);
+                if (element) {
+                    return element.setAttribute('value', value);
+                }
+            }, selector, value);
+        }
+    }, {
         key: 'getAttr',
         value: function getAttr(selector, attr) {
+            this.log('Getting attribute ' + attr + ' for ' + selector);
             return this.page.evaluate(function (selector, attr) {
                 var element = document.querySelector(selector);
                 if (element) {
@@ -309,6 +382,7 @@ var Haunt = function () {
     }, {
         key: 'getExists',
         value: function getExists(selector) {
+            this.log('Checking existense of ' + selector);
             return this.page.evaluate(function (selector) {
                 var element = document.querySelector(selector);
                 return !!element;
@@ -317,6 +391,7 @@ var Haunt = function () {
     }, {
         key: 'getHtml',
         value: function getHtml(selector) {
+            this.log('Getting inner HTML of ' + selector);
             return this.page.evaluate(function (selector) {
                 var element = document.querySelector(selector);
                 if (element) {
@@ -460,6 +535,29 @@ var Haunt = function () {
          * These are chainable functions that make up the Haunt scenario
          */
 
+        /**
+         * TODO: GET/POST data to url
+         * 
+         * Ajax request with XMLHttpRequest
+         */
+
+    }, {
+        key: 'ajax',
+        value: function ajax(method, url, data, func) {
+            this.check(method, 'string');
+            this.check(url, 'string');
+            if (typeof data === 'function') {
+                func = data;
+                data = null;
+            }
+            this._push(function (resolve, reject) {
+                this.doAjax(method, url, data, function (results) {
+                    func.call(this, results);
+                    resolve();
+                }.bind(this), reject);
+            }.bind(this));
+            return this;
+        }
     }, {
         key: 'attr',
         value: function attr(selector, _attr, func) {
@@ -476,6 +574,7 @@ var Haunt = function () {
         key: 'click',
         value: function click(selector) {
             this._push(function (resolve, reject) {
+                this.log('Clicking ' + selector);
                 this.doClick(selector);
                 resolve();
             }.bind(this));
@@ -513,6 +612,7 @@ var Haunt = function () {
         key: 'get',
         value: function get(url) {
             this._push(function (resolve, reject) {
+                this.log('Loading URL ' + url);
                 this.requestedUrl = url;
                 this.page.clearMemoryCache();
                 this.page.open(url, function (status) {
@@ -543,13 +643,15 @@ var Haunt = function () {
             }.bind(this));
             return this;
         }
-        /**
-         * TODO: POST data to url
-         */
-
     }, {
-        key: 'post',
-        value: function post(url, data) {
+        key: 'setValue',
+        value: function setValue(selector, value) {
+            this.check(selector, 'string');
+            this.check(value, 'string');
+            this._push(function (resolve, reject) {
+                this.doSetValue.call(this, selector, value);
+                resolve();
+            }.bind(this));
             return this;
         }
     }, {
@@ -620,6 +722,17 @@ var Haunt = function () {
             return this;
         }
     }, {
+        key: 'value',
+        value: function value(selector, func) {
+            this.check(selector, 'string');
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.doGetValue(selector));
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
         key: 'wait',
         value: function wait(ms) {
             this._push(function (resolve, reject) {
@@ -633,20 +746,10 @@ var Haunt = function () {
         key: 'waitFor',
         value: function waitFor(selector, ms) {
             this._push(function (resolve, reject) {
-                var t = setTimeout(function () {
-                    clearInterval(i);
-                    reject('waitFor', selector, ms);
-                }, ms || this.options.waitForTimeout);
-                var i = setInterval(function () {
-                    var result = this.page.evaluate(function (selector) {
-                        return !!document.querySelector(selector);
-                    }, selector);
-                    if (result) {
-                        clearInterval(i);
-                        clearTimeout(t);
-                        resolve();
-                    }
-                }.bind(this), this.options.waitForPoll);
+                this.log('Waiting for ' + selector);
+                this.doWaitFor(resolve, reject, ms, function (selector) {
+                    return !!document.querySelector(selector);
+                }, selector);
             }.bind(this));
             return this;
         }
