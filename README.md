@@ -68,7 +68,13 @@ haunt.create().open('https://github.com').title(function(title) {
 
 Accepts an `options` object with the next keys:
 
+`autoReturn: true|false` optionally return the haunt data to the console and terminate the phantom process
 `log: true|false` optionally enable the logs for the process, if you want to track page errors or other problems
+`userAgent: string` set a custom user agent string
+
+**`ajax`**
+
+`.ajax(method, url, [data], callback(results))` Run ajax request in context of currently running page. Callback gets an object with multiple properties including `status`, `headers` (an array of header rows), `response`, `responseText`, `responseXML` and `readyState`.
 
 **`attr`**
 
@@ -114,6 +120,10 @@ Accepts an `options` object with the next keys:
 
 `.title(callback(title))` get the document title and run the callback. Synchronous is `.getTitle`.
 
+**`value`**
+
+`.value(selector, callback(value))` Gets the `value` of the `selector` and runs callback with its value.
+
 **`wait`**
 
 `.wait(ms)` wait for specific time in milliseconds
@@ -129,6 +139,11 @@ Accepts an `options` object with the next keys:
 **`setData`**
 
 `.setData(key, value)` *sync* Sets the `value` to the `key` to be used later. 
+
+**`setValue`**
+
+`.setValue(selector, value)` Sets the `value` of the `selector` input fields.
+
 
 ## Developing haunt.js
 
