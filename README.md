@@ -132,17 +132,24 @@ Accepts an `options` object with the next keys:
 
 `.waitFor(selector, [ms])` wait for specific selector to appear on page with an optional timeout specified, defaulting to 30000ms.
 
-**`getData`**
-
-`.getData([key])` *sync* Gets the value of the `key` or returns full data object.
-
-**`setData`**
-
-`.setData(key, value)` *sync* Sets the `value` to the `key` to be used later. 
-
 **`setValue`**
 
 `.setValue(selector, value)` Sets the `value` of the `selector` input fields.
+
+## Synchronous API
+
+**`doWriteFile`**
+
+`.doWriteFile(filepath, text, [writeMode=w])` Writes any `text` to a given `filepath`
+
+**`getData`**
+
+`.getData([key])` Gets the value of the `key` or returns full data object.
+
+**`setData`**
+
+`.setData(key, value)` Sets the `value` to the `key` to be used later. 
+
 
 
 ## Developing haunt.js
