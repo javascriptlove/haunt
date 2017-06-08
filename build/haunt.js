@@ -337,7 +337,7 @@ var Haunt = function () {
             } else {
                 data = this.getData(key);
             }
-            fs.write(file, JSON.stringify(data, true, 2), 'w');
+            this.doWriteFile(file, JSON.stringify(data, true, 2));
         }
     }, {
         key: 'doWaitFor',
@@ -356,6 +356,13 @@ var Haunt = function () {
                     resolve();
                 }
             }.bind(this), this.options.waitForPoll);
+        }
+    }, {
+        key: 'doWriteFile',
+        value: function doWriteFile(file, contents) {
+            var mode = arguments.length <= 2 || arguments[2] === undefined ? 'w' : arguments[2];
+
+            fs.write(file, contents, mode);
         }
     }, {
         key: 'doSetValue',

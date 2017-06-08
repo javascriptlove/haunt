@@ -289,7 +289,7 @@ class Haunt {
         } else {
             data = this.getData(key);
         }
-        fs.write(file, JSON.stringify(data, true, 2), 'w');
+        this.doWriteFile(file, JSON.stringify(data, true, 2));
     }
     doWaitFor(resolve, reject, ms, /* , args */) {
         var args = Array.prototype.slice.call(arguments, 3);
@@ -306,6 +306,9 @@ class Haunt {
                 resolve();
             }
         }.bind(this), this.options.waitForPoll);
+    }
+    doWriteFile(file, contents, mode='w') {
+        fs.write(file, contents, mode);
     }
     doSetValue(selector, value) {
         this.log('Setting value ' + value + ' for ' + selector);
