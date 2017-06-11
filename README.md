@@ -68,8 +68,8 @@ haunt.create().open('https://github.com').title(function(title) {
 
 Accepts an `options` object with the next keys:
 
-`autoReturn: true|false` optionally return the haunt data to the console and terminate the phantom process
-`log: true|false` optionally enable the logs for the process, if you want to track page errors or other problems
+`autoReturn: true|false` optionally return the haunt data to the console and terminate the phantom process  
+`log: true|false` optionally enable the logs for the process, if you want to track page errors or other problems  
 `userAgent: string` set a custom user agent string
 
 **`ajax`**
