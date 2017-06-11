@@ -360,7 +360,7 @@ var Haunt = function () {
     }, {
         key: 'doWriteFile',
         value: function doWriteFile(file, contents) {
-            var mode = arguments.length <= 2 || arguments[2] === undefined ? 'w' : arguments[2];
+            var mode = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'w';
 
             fs.write(file, contents, mode);
         }
@@ -756,6 +756,17 @@ var Haunt = function () {
                 this.log('Waiting for ' + selector);
                 this.doWaitFor(resolve, reject, ms, function (selector) {
                     return !!document.querySelector(selector);
+                }, selector);
+            }.bind(this));
+            return this;
+        }
+    }, {
+        key: 'waitForFalse',
+        value: function waitForFalse(selector, ms) {
+            this._push(function (resolve, reject) {
+                this.log('Waiting for non-existence of ' + selector);
+                this.doWaitFor(resolve, reject, ms, function (selector) {
+                    return !document.querySelector(selector);
                 }, selector);
             }.bind(this));
             return this;

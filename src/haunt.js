@@ -637,6 +637,15 @@ class Haunt {
         }.bind(this));
         return this;
     }
+    waitForFalse(selector, ms) {
+        this._push(function(resolve, reject) {
+            this.log('Waiting for non-existence of ' + selector);
+            this.doWaitFor(resolve, reject, ms, function(selector) {
+                return !document.querySelector(selector);
+            }, selector);
+        }.bind(this));
+        return this;
+    }
 }
 
 var create = function(options) {
