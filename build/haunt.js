@@ -396,17 +396,6 @@ var Haunt = function () {
             }, selector);
         }
     }, {
-        key: 'getHtml',
-        value: function getHtml(selector) {
-            this.log('Getting inner HTML of ' + selector);
-            return this.page.evaluate(function (selector) {
-                var element = document.querySelector(selector);
-                if (element) {
-                    return element.innerHTML;
-                }
-            }, selector);
-        }
-    }, {
         key: 'getHtmlAll',
         value: function getHtmlAll(selector, attribute, props) {
             this.page.evaluate(this.phantomDataFilter);
@@ -496,6 +485,19 @@ var Haunt = function () {
                 }
             }, selector, style);
         })
+    }, {
+        key: 'getProperty',
+        value: function getProperty(selector, property) {
+            this.log('Getting ' + property + ' of ' + selector);
+            return this.page.evaluate(function (selector, property) {
+                var element = document.querySelector(selector);
+                if (element) {
+                    return element[property];
+                } else {
+                    return undefined;
+                }
+            }, selector, property);
+        }
     }, {
         key: 'getTitle',
         value: function getTitle() {
@@ -634,7 +636,7 @@ var Haunt = function () {
             this.check(selector, 'string');
             this.check(func, 'function');
             this._push(function (resolve, reject) {
-                func.call(this, this.getHtml(selector));
+                func.call(this, this.getProperty(selector, 'innerHTML'));
                 resolve();
             }.bind(this));
             return this;
@@ -646,6 +648,18 @@ var Haunt = function () {
             this.check(func, 'function');
             this._push(function (resolve, reject) {
                 func.call(this, this.getExists(selector));
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
+        key: 'property',
+        value: function property(selector, _property, func) {
+            this.check(selector, 'string');
+            this.check(_property, 'string');
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.getProperty(selector, _property));
                 resolve();
             }.bind(this));
             return this;
@@ -679,6 +693,17 @@ var Haunt = function () {
             this.check(func, 'function');
             this._push(function (resolve, reject) {
                 func.call(this, this.getTitle());
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
+        key: 'text',
+        value: function text(selector, func) {
+            this.check(selector, 'string');
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.getProperty(selector, 'innerText'));
                 resolve();
             }.bind(this));
             return this;
@@ -743,6 +768,7 @@ var Haunt = function () {
         key: 'wait',
         value: function wait(ms) {
             this._push(function (resolve, reject) {
+                this.log('Waiting for ' + ms + 'ms');
                 setTimeout(function () {
                     resolve();
                 }, ms);

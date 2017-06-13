@@ -335,15 +335,6 @@ class Haunt {
             return !!element;
         }, selector);
     }
-    getHtml(selector) {
-        this.log('Getting inner HTML of ' + selector);
-        return this.page.evaluate(function(selector) {
-            var element = document.querySelector(selector);
-            if (element) {
-                return element.innerHTML;
-            }
-        }, selector);
-    }
     getHtmlAll(selector, attribute, props) {
         this.page.evaluate(this.phantomDataFilter);
         return this.page.evaluate(function(selector, attribute, props) {
@@ -416,6 +407,17 @@ class Haunt {
                 return computed[style];
             }
         }, selector, style);
+    }
+    getProperty(selector, property) {
+        this.log('Getting ' + property + ' of ' + selector);
+        return this.page.evaluate(function(selector, property) {
+            var element = document.querySelector(selector);
+            if (element) {
+                return element[property];
+            } else {
+                return undefined;
+            }
+        }, selector, property);
     }
     getTitle() {
         return this.page.evaluate(function() {
@@ -533,7 +535,7 @@ class Haunt {
         this.check(selector, 'string');
         this.check(func, 'function');
         this._push(function(resolve, reject) {
-            func.call(this, this.getHtml(selector));
+            func.call(this, this.getProperty(selector, 'innerHTML'));
             resolve();
         }.bind(this));
         return this;
@@ -543,6 +545,16 @@ class Haunt {
         this.check(func, 'function');
         this._push(function(resolve, reject) {
             func.call(this, this.getExists(selector));
+            resolve();
+        }.bind(this));
+        return this;
+    }
+    property(selector, property, func) {
+        this.check(selector, 'string');
+        this.check(property, 'string');
+        this.check(func, 'function');
+        this._push(function(resolve, reject) {
+            func.call(this, this.getProperty(selector, property));
             resolve();
         }.bind(this));
         return this;
@@ -570,6 +582,15 @@ class Haunt {
         this.check(func, 'function');        
         this._push(function(resolve, reject) {
             func.call(this, this.getTitle());
+            resolve();
+        }.bind(this));
+        return this;
+    }
+    text(selector, func) {
+        this.check(selector, 'string');
+        this.check(func, 'function');
+        this._push(function(resolve, reject) {
+            func.call(this, this.getProperty(selector, 'innerText'));
             resolve();
         }.bind(this));
         return this;
@@ -622,6 +643,7 @@ class Haunt {
     }
     wait(ms) {
         this._push(function(resolve, reject) {
+            this.log('Waiting for ' + ms + 'ms');
             setTimeout(function() {
                 resolve();
             }, ms);

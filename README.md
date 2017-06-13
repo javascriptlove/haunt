@@ -53,7 +53,7 @@ Just put `haunt.js` from `build/` into the same folder you have your script in. 
 
 ## API
 
-Haunt includes several promise-like asynchronous calls and of course some synchronous helpers. All examples below assume that there is a variable which was setup with `page.create()`.
+Haunt includes several promise-like asynchronous calls and of course some synchronous helpers. All examples below assume that there is a variable which was setup with `require('./haunt.js').create()`.
 
 *The Start*
 
@@ -106,7 +106,11 @@ Accepts an `options` object with the next keys:
 
 **`html`**
 
-`.html(selector, callback(html))` returns the innerHTML of the given selector. Synchronous is `.getHtml`.
+`.html(selector, callback(html))` returns the innerHTML of the given selector. Synchronous is `.getProperty(selector, 'innerHTML')`.
+
+**`property`**
+
+`.property(selector, property, callback(value))` returns the given `property` of the given `selector`. Synchronous is `.getProperty(selector, property)`.
 
 **`return`**
 
@@ -119,6 +123,10 @@ Accepts an `options` object with the next keys:
 **`title`**
 
 `.title(callback(title))` get the document title and run the callback. Synchronous is `.getTitle`.
+
+**`text`**
+
+`.text(selector, callback(text))` returns the innerText of the given selector. Synchronous is `.getProperty(selector, 'innerText')`.
 
 **`value`**
 
