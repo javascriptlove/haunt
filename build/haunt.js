@@ -618,6 +618,24 @@ var Haunt = function () {
             return this;
         }
     }, {
+        key: 'evaluate',
+        value: function evaluate() /*func, .. args, callback */{
+            this.check(arguments[0], 'function');
+            var args = Array.prototype.slice.apply(arguments);
+            var callback = null;
+            if (arguments.length > 1 && typeof arguments[arguments.length - 1] === 'function') {
+                callback = args.splice(args.length - 1, 1)[0];
+            }
+            this._push(function (resolve, reject) {
+                var result = this.page.evaluate.apply(this.page, args);
+                if (callback) {
+                    callback(result);
+                }
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
         key: 'get',
         value: function get(url) {
             this._push(function (resolve, reject) {

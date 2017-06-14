@@ -96,6 +96,10 @@ Accepts an `options` object with the next keys:
 
 `.end([callback])` end the phantom process and run an optional callback before that.
 
+**`evaluate`**
+
+`.evaluate(func, arg1, ..., argN, [callback])` call a `func` function inside the phantom page context (`page.evaluate(function)`), passing the `arg` parameters, and run an optional callback with a result of that call.
+
 **`exists`**
 
 `.exists(selector, callback(exists))` check if the specified selector exists on page (including the invisible ones).
