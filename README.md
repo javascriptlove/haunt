@@ -127,6 +127,10 @@ Accepts an `options` object with the next keys:
 
 `.style(selector, styleName, callback(styleValue))` find the specified selector and get its style value. Useful when inline styles specified.
 
+**`then`**
+
+`.then(callback)` runs a `callback` when the previous steps are done.
+
 **`title`**
 
 `.title(callback(title))` get the document title and run the callback. Synchronous is `.getTitle`.
