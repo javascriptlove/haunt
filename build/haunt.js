@@ -360,7 +360,7 @@ var Haunt = function () {
     }, {
         key: 'doWriteFile',
         value: function doWriteFile(file, contents) {
-            var mode = arguments.length <= 2 || arguments[2] === undefined ? 'w' : arguments[2];
+            var mode = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'w';
 
             fs.write(file, contents, mode);
         }
@@ -393,17 +393,6 @@ var Haunt = function () {
             return this.page.evaluate(function (selector) {
                 var element = document.querySelector(selector);
                 return !!element;
-            }, selector);
-        }
-    }, {
-        key: 'getHtml',
-        value: function getHtml(selector) {
-            this.log('Getting inner HTML of ' + selector);
-            return this.page.evaluate(function (selector) {
-                var element = document.querySelector(selector);
-                if (element) {
-                    return element.innerHTML;
-                }
             }, selector);
         }
     }, {
@@ -496,6 +485,19 @@ var Haunt = function () {
                 }
             }, selector, style);
         })
+    }, {
+        key: 'getProperty',
+        value: function getProperty(selector, property) {
+            this.log('Getting ' + property + ' of ' + selector);
+            return this.page.evaluate(function (selector, property) {
+                var element = document.querySelector(selector);
+                if (element) {
+                    return element[property];
+                } else {
+                    return undefined;
+                }
+            }, selector, property);
+        }
     }, {
         key: 'getTitle',
         value: function getTitle() {
@@ -616,6 +618,24 @@ var Haunt = function () {
             return this;
         }
     }, {
+        key: 'evaluate',
+        value: function evaluate() /*func, .. args, callback */{
+            this.check(arguments[0], 'function');
+            var args = Array.prototype.slice.apply(arguments);
+            var callback = null;
+            if (arguments.length > 1 && typeof arguments[arguments.length - 1] === 'function') {
+                callback = args.splice(args.length - 1, 1)[0];
+            }
+            this._push(function (resolve, reject) {
+                var result = this.page.evaluate.apply(this.page, args);
+                if (callback) {
+                    callback(result);
+                }
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
         key: 'get',
         value: function get(url) {
             this._push(function (resolve, reject) {
@@ -634,7 +654,7 @@ var Haunt = function () {
             this.check(selector, 'string');
             this.check(func, 'function');
             this._push(function (resolve, reject) {
-                func.call(this, this.getHtml(selector));
+                func.call(this, this.getProperty(selector, 'innerHTML'));
                 resolve();
             }.bind(this));
             return this;
@@ -646,6 +666,18 @@ var Haunt = function () {
             this.check(func, 'function');
             this._push(function (resolve, reject) {
                 func.call(this, this.getExists(selector));
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
+        key: 'property',
+        value: function property(selector, _property, func) {
+            this.check(selector, 'string');
+            this.check(_property, 'string');
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.getProperty(selector, _property));
                 resolve();
             }.bind(this));
             return this;
@@ -679,6 +711,17 @@ var Haunt = function () {
             this.check(func, 'function');
             this._push(function (resolve, reject) {
                 func.call(this, this.getTitle());
+                resolve();
+            }.bind(this));
+            return this;
+        }
+    }, {
+        key: 'text',
+        value: function text(selector, func) {
+            this.check(selector, 'string');
+            this.check(func, 'function');
+            this._push(function (resolve, reject) {
+                func.call(this, this.getProperty(selector, 'innerText'));
                 resolve();
             }.bind(this));
             return this;
@@ -743,6 +786,7 @@ var Haunt = function () {
         key: 'wait',
         value: function wait(ms) {
             this._push(function (resolve, reject) {
+                this.log('Waiting for ' + ms + 'ms');
                 setTimeout(function () {
                     resolve();
                 }, ms);
@@ -761,6 +805,17 @@ var Haunt = function () {
                         return !!document.querySelector(selector);
                     }, selector);
                 }
+            }.bind(this));
+            return this;
+        }
+    }, {
+        key: 'waitForFalse',
+        value: function waitForFalse(selector, ms) {
+            this._push(function (resolve, reject) {
+                this.log('Waiting for non-existence of ' + selector);
+                this.doWaitFor(resolve, reject, ms, function (selector) {
+                    return !document.querySelector(selector);
+                }, selector);
             }.bind(this));
             return this;
         }

@@ -56,7 +56,7 @@ Just put `haunt.js` from `build/` into the same folder you have your script in. 
 
 ## API
 
-Haunt includes several promise-like asynchronous calls and of course some synchronous helpers. All examples below assume that there is a variable which was setup with `page.create()`.
+Haunt includes several promise-like asynchronous calls and of course some synchronous helpers. All examples below assume that there is a variable which was setup with `require('./haunt.js').create()`.
 
 *The Start*
 
@@ -71,8 +71,8 @@ haunt.create().open('https://github.com').title(function(title) {
 
 Accepts an `options` object with the next keys:
 
-`autoReturn: true|false` optionally return the haunt data to the console and terminate the phantom process
-`log: true|false` optionally enable the logs for the process, if you want to track page errors or other problems
+`autoReturn: true|false` optionally return the haunt data to the console and terminate the phantom process  
+`log: true|false` optionally enable the logs for the process, if you want to track page errors or other problems  
 `userAgent: string` set a custom user agent string
 
 **`ajax`**
@@ -99,6 +99,10 @@ Accepts an `options` object with the next keys:
 
 `.end([callback])` end the phantom process and run an optional callback before that.
 
+**`evaluate`**
+
+`.evaluate(func, arg1, ..., argN, [callback])` call a `func` function inside the phantom page context (`page.evaluate(function)`), passing the `arg` parameters, and run an optional callback with a result of that call.
+
 **`exists`**
 
 `.exists(selector, callback(exists))` check if the specified selector exists on page (including the invisible ones).
@@ -109,7 +113,11 @@ Accepts an `options` object with the next keys:
 
 **`html`**
 
-`.html(selector, callback(html))` returns the innerHTML of the given selector. Synchronous is `.getHtml`.
+`.html(selector, callback(html))` returns the innerHTML of the given selector. Synchronous is `.getProperty(selector, 'innerHTML')`.
+
+**`property`**
+
+`.property(selector, property, callback(value))` returns the given `property` of the given `selector`. Synchronous is `.getProperty(selector, property)`.
 
 **`return`**
 
@@ -123,6 +131,10 @@ Accepts an `options` object with the next keys:
 
 `.title(callback(title))` get the document title and run the callback. Synchronous is `.getTitle`.
 
+**`text`**
+
+`.text(selector, callback(text))` returns the innerText of the given selector. Synchronous is `.getProperty(selector, 'innerText')`.
+
 **`value`**
 
 `.value(selector, callback(value))` Gets the `value` of the `selector` and runs callback with its value.
@@ -134,6 +146,10 @@ Accepts an `options` object with the next keys:
 **`waitFor`**
 
 `.waitFor(selector, [ms])` wait for specific selector to appear on page with an optional timeout specified, defaulting to 30000ms. If `selector` is a function, it will run that function as a tester in the page context, and will expect the function to return true when condition is fulfilled.
+
+**`waitForFalse`**
+
+`.waitForFalse(selector, [ms])` wait for specific selector to not be present on page with an optional timeout specified, defaulting to 30000ms.
 
 **`setValue`**
 
