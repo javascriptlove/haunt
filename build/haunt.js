@@ -360,7 +360,7 @@ var Haunt = function () {
     }, {
         key: 'doWriteFile',
         value: function doWriteFile(file, contents) {
-            var mode = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'w';
+            var mode = arguments.length <= 2 || arguments[2] === undefined ? 'w' : arguments[2];
 
             fs.write(file, contents, mode);
         }
