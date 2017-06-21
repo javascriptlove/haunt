@@ -35,6 +35,9 @@ haunt.create({
     .wait(1000)
     .click('a[href="/login"]')
     .waitFor('.username')
+    .waitFor(function() {
+        return document.title === 'Hello World.';
+    })
     .url(function(url) {
         console.log(url);
     })
@@ -130,7 +133,7 @@ Accepts an `options` object with the next keys:
 
 **`waitFor`**
 
-`.waitFor(selector, [ms])` wait for specific selector to appear on page with an optional timeout specified, defaulting to 30000ms.
+`.waitFor(selector, [ms])` wait for specific selector to appear on page with an optional timeout specified, defaulting to 30000ms. If `selector` is a function, it will run that function as a tester in the page context, and will expect the function to return true when condition is fulfilled.
 
 **`setValue`**
 
@@ -140,7 +143,7 @@ Accepts an `options` object with the next keys:
 
 **`doWriteFile`**
 
-`.doWriteFile(filepath, text, [writeMode=w])` Writes any `text` to a given `filepath`
+`.doWriteFile(filepath, text, [writeMode=w])` Writes any `text` to a given `filepath`.
 
 **`getData`**
 

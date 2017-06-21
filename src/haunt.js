@@ -631,9 +631,13 @@ class Haunt {
     waitFor(selector, ms) {
         this._push(function(resolve, reject) {
             this.log('Waiting for ' + selector);
-            this.doWaitFor(resolve, reject, ms, function(selector) {
-                return !!document.querySelector(selector);
-            }, selector);
+            if (typeof selector === 'function') {
+                this.doWaitFor(resolve, reject, ms, selector);
+            } else {
+                this.doWaitFor(resolve, reject, ms, function(selector) {
+                    return !!document.querySelector(selector);
+                }, selector);
+            }
         }.bind(this));
         return this;
     }
